@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1402-11-12
+# Update: 1402-11-14
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -349,14 +349,14 @@ else
 			fi
 		fi
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			output "${Cyan}Installing EPEL and Remi repository...${Color_Off}"
+			output "${Cyan}Installing Remi repository...${Color_Off}"
 			file="/etc/yum.repos.d/remi.repo"
 			if [ ! -f "$file" ]; then
 				dnf install http://dl.fedoraproject.org/pub/epel/epel-release-latest-$major.noarch.rpm -y
 				dnf install http://rpms.remirepo.net/enterprise/remi-release-$major.rpm -y
 			fi
 		elif [ "$major" = "6" ]; then
-			output "${Cyan}Installing EPEL and Remi repository...${Color_Off}"
+			output "${Cyan}Installing Remi repository...${Color_Off}"
 			file="/etc/yum.repos.d/remi.repo"
 			if [ ! -f "$file" ]; then
 				if [ "$OS" = "x86_64" ]; then
@@ -367,7 +367,7 @@ else
 				yum install http://rpms.remirepo.net/enterprise/remi-release-$major.rpm -y
 			fi
 		elif [ "$major" = "5" ]; then
-			output "${Cyan}Installing EPEL and Remi repository...${Color_Off}"
+			output "${Cyan}Installing Remi repository...${Color_Off}"
 			file="/etc/yum.repos.d/remi.repo"
 			if [ ! -f "$file" ]; then
 				if [ "$OS" = "x86_64" ]; then
@@ -378,7 +378,7 @@ else
 				yum install http://rpms.remirepo.net/enterprise/remi-release-$major.rpm -y
 			fi
 		elif [ "$major" = "4" ]; then
-			output "${Cyan}Installing EPEL and Remi repository...${Color_Off}"
+			output "${Cyan}Installing Remi repository...${Color_Off}"
 			file="/etc/yum.repos.d/remi.repo"
 			if [ ! -f "$file" ]; then
 				if [ "$OS" = "x86_64" ]; then
@@ -483,15 +483,15 @@ else
 		fi
 		if ! command -v "php" &>/dev/null; then
 			if [ "$major" = "7" ]; then
-				output "\n${Cyan}Installing Apache and PHP 7.4...${Color_Off}"
+				output "\n${Cyan}Installing Apache and PHP...${Color_Off}"
 				dnf install --enablerepo=remi,remi-php74 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel -y
 			elif [ "$major" = "8" ] || [ "$major" = "9" ]; then
-				output "\n${Cyan}Installing Apache and PHP 7.4...${Color_Off}"
+				output "\n${Cyan}Installing Apache and PHP...${Color_Off}"
 				dnf module reset php -y
 				dnf module install php:remi-7.4 -y
 				dnf install --enablerepo=remi --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel -y
 			else
-				output "\n${Cyan}Installing Apache and PHP 7.2...${Color_Off}"
+				output "\n${Cyan}Installing Apache and PHP...${Color_Off}"
 				yum install --enablerepo=remi,remi-php72 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql curl-devel -y
 			fi
 			if [ "$major" = "6" ]; then
