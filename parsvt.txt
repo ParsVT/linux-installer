@@ -40,6 +40,21 @@ mysqlPWD="123456789"
 output() {
 	echo -e "$1"
 }
+checkInternetConnection() {
+	TIMESTAMP=$(date +%s)
+	ping -c 1 -W 0.7 8.8.8.8 >/dev/null 2>&1
+	if [ $? -eq 0 ]; then
+		echo -e "\n${Green}Internet connection is UP $(date +%Y-%m-%d_%H:%M:%S_%Z) $(($(date +%s) - $TIMESTAMP))${Color_Off}"
+		INTERNET_STATUS="UP"
+	else
+		echo -e "\n${Red}Internet connection is DOWN $(date +%Y-%m-%d_%H:%M:%S_%Z) $(($(date +%s) - $TIMESTAMP))${Color_Off}"
+		INTERNET_STATUS="DOWN"
+		output "${Red}Please check the server's internet connection and run the installer again.${Color_Off}"
+		output "\n${Red}The operation aborted!${Color_Off}"
+		output "${Yellow}www.parsvt.com${Color_Off}\n"
+		exit
+	fi
+}
 setDNS() {
 	echo -e "\nPlease enter the item number you want to use as DNS during installation:\n"
 	echo -e "[${Cyan}1${Color_Off}] Shecan (recommended)"
@@ -209,6 +224,7 @@ else
 		INSTALLTYPE="Exist"
 		sleep 10
 	fi
+	checkInternetConnection
 	setDNS
 	output "\n${Cyan}Checking operating system...${Color_Off}"
 	if [ ! -f "/etc/centos-release" ] && [ ! -f "/etc/redhat-release" ]; then
