@@ -3,7 +3,7 @@ ParsVT CRM Installation Script
 
 Shell script to install Apache, PHP, MySQL, VtigerCRM and ParsVT package on Linux (CentOS and all RHEL-based).
 
-> Developers: [Hamid Rabiei](https://github.com/spadana2004), [Mohammad Hadadpour](https://github.com/whoismh11)
+> Developers: Hamid Rabiei, Mohammad Hadadpour
 
 > All rights reserved for ParsVtiger
 
