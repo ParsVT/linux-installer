@@ -9,5 +9,5 @@ Shell script to install Apache, PHP, MySQL, VtigerCRM and ParsVT package on Linu
 
 ## Usage
 ```bash
-yum install wget -y && rm -rf parsvt.sh* && wget https://github.com/ParsVT/linux-installer/blob/main/parsvt.txt -O parsvt.sh && chmod +x parsvt.sh && sh parsvt.sh
+yum install wget -y && rm -rf parsvt.sh* && wget http://github.com/ParsVT/linux-installer/blob/main/parsvt.txt -O parsvt.sh && chmod +x parsvt.sh && sh parsvt.sh
 ```
