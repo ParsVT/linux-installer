@@ -324,7 +324,7 @@ else
 		wgetfile="/usr/bin/wget"
 		curlfile="/usr/bin/curl"
 		if [ ! -f "$wgetfile" ] || [ ! -f "$curlfile" ]; then
-			output "${Red}required packages failed to install!${Color_Off}"
+			output "\n${Red}required packages failed to install!${Color_Off}"
 			output "${Red}Please check the server's internet connection and DNS settings and run the installer again.${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
