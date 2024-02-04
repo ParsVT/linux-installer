@@ -3,13 +3,11 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1402-11-14
+# Update: 1402-11-15
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
 shecanDNS2="185.51.200.2"
-online403DNS1="10.202.10.202"
-online403DNS2="10.202.10.102"
 googleDNS1="8.8.8.8"
 googleDNS2="8.8.4.4"
 cloudflareDNS1="1.1.1.1"
@@ -58,24 +56,20 @@ checkInternetConnection() {
 setDNS() {
 	echo -e "\nPlease enter the item number you want to use as DNS during installation:\n"
 	echo -e "[${Cyan}1${Color_Off}] Shecan (recommended)"
-	echo -e "[${Cyan}2${Color_Off}] 403"
-	echo -e "[${Cyan}3${Color_Off}] Google"
-	echo -e "[${Cyan}4${Color_Off}] Cloudflare"
-	echo -e "[${Yellow}5${Color_Off}] Continue without changing DNS\n"
-	read -p "Please select an item (1-5): " rundns
+	echo -e "[${Cyan}2${Color_Off}] Google"
+	echo -e "[${Cyan}3${Color_Off}] Cloudflare"
+	echo -e "[${Yellow}4${Color_Off}] Continue without changing DNS\n"
+	read -p "Please select an item (1-4): " rundns
 	if [ "$rundns" == "1" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
 	elif [ "$rundns" == "2" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-		echo -e "nameserver ${online403DNS1}\nnameserver ${online403DNS2}\n" >/etc/resolv.conf
+		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
 	elif [ "$rundns" == "3" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
-	elif [ "$rundns" == "4" ]; then
-		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${cloudflareDNS1}\nnameserver ${cloudflareDNS2}\n" >/etc/resolv.conf
-	elif [ "$rundns" == "5" ]; then
+	elif [ "$rundns" == "4" ]; then
 		echo -e "${Green}Done!${Color_Off}"
 	else
 		setDNS
