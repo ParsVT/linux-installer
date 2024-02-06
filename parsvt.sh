@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1402-11-15
+# Update: 1402-11-17
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -24,7 +24,7 @@ secondarySite="files.aweb.asia"
 ETH_DEV="127.0.0.1"
 IP=$(ifconfig eth0 2>/dev/null | awk '/inet addr:/ {print $2}' | sed 's/addr://')
 INSTALLTYPE="Fresh"
-DBHOST="127.0.0.1"
+DBHOST="localhost"
 DBUSER="root"
 DBNAME="parsvt"
 SETUPDIR="/var/www/html/"
@@ -450,7 +450,7 @@ else
 					fi
 					exit
 				fi
-				echo -n "Should IP address ($(tput bold)${ipsarray[$DEVS]}$(tput sgr0)) be used for software licensing? (y/n): "
+				echo -n "Should IP address ($(tput bold)${ipsarray[$DEVS]}$(tput sgr0)) be used for licensing? (y/n): "
 				read yesno
 				if [ "$yesno" = "n" ]; then
 					output "\n${Red}The operation aborted!${Color_Off}"
@@ -579,7 +579,7 @@ else
 		fi
 		getPHPConfigPath
 		output "${Cyan}Setting ParsVT requirements...${Color_Off}"
-		sed -i -e 's/max_execution_time = 30/max_execution_time = 0/g' $PHPINI
+		sed -i -e 's/max_execution_time = 30/max_execution_time = 600/g' $PHPINI
 		sed -i -e 's/memory_limit = 128M/memory_limit = 512M/g' $PHPINI
 		sed -i -e 's/allow_call_time_pass_reference = Off/allow_call_time_pass_reference = On/g' $PHPINI
 		sed -i -e 's/short_open_tag = Off/short_open_tag = On/g' $PHPINI
@@ -678,9 +678,10 @@ expect eof
 			echo "$SECURE_MYSQL"
 			wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlmode.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
 			restartDatabase
+			output "${Green}MySQL (MariaDB) successfully installed!${Color_Off}\n"
+			output "${Cyan}Creating database...${Color_Off}"
 			mysql -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "CREATE DATABASE IF NOT EXISTS ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_general_ci';"
 			mysql -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "ALTER DATABASE ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_general_ci';"
-			output "${Green}MySQL (MariaDB) successfully installed!${Color_Off}\n"
 			output "${Green}Database successfully created!${Color_Off}\n"
 		fi
 		restartDatabase
@@ -719,7 +720,7 @@ expect eof
 		CRMURL=$(string_replace "$CRMURL" "/")
 		wget -q -o /dev/null -O /dev/null "http://$CRMURL/_install.php?db_hostname=$DBHOST&db_name=$DBNAME&db_username=$DBUSER&db_password=$DBPassword"
 		wget -q -o /dev/null -O /dev/null "http://$CRMURL/_extensions.php?token=${RESPONSES[1]}"
-		grep "http://$CRMURL/vtigercron.php" /var/spool/cron/root || echo "*/15 * * * * wget --spider \"http://$CRMURL/vtigercron.php\" >/dev/null 2>&1" >>/var/spool/cron/root
+		grep "$SETUPDIR/cron/vtigercron.sh" /var/spool/cron/root || echo "*/15 * * * * sh $SETUPDIR/cron/vtigercron.sh >/dev/null 2>&1" >>/var/spool/cron/root
 		rm -rf $SETUPDIR/_install*
 		rm -rf $SETUPDIR/_extensions*
 		output "${Green}ParsVT CRM package successfully installed!${Color_Off}\n"
@@ -746,14 +747,14 @@ expect eof
 			fi
 			output "${Green}Java libraries successfully installed!${Color_Off}\n"
 		fi
+		output "${Cyan}Setting backup directory...${Color_Off}"
 		output "#!/bin/bash\n delfile=\$(date --date='-7 day' +'%Y-%d-%m')\n yest=\$(date --date='today' +'%Y-%d-%m')\n backupdirectory='$SETUPDIR2'\n storagedirectory='$backupdirectory'\n mysqldump --user=$DBUSER --password=$DBPassword --host=$DBHOST $DBNAME | gzip -c > \$storagedirectory/$DBNAME-\$yest.sql.gz\n tar -czf \$storagedirectory/$DBNAME-\$yest.tar.gz \$backupdirectory\n rm -rf \$storagedirectory/$DBNAME-\$delfile.sql.gz*\n rm -rf \$storagedirectory/$DBNAME-\$delfile.tar.gz*" >/home/backup-$DBNAME.sh
 		if [ ! -d $backupdirectory ]; then
 			mkdir -p $backupdirectory
-		else
-			output "Backup directory already exists! ($backupdirectory)\n"
 		fi
 		chmod +x /home/backup-$DBNAME.sh
 		grep "sh /home/backup-$DBNAME.sh" /var/spool/cron/root || echo "0 22 * * * sh /home/backup-$DBNAME.sh >/dev/null 2>&1" >>/var/spool/cron/root
+		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
 			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.105-1.noarch.rpm -y
@@ -810,9 +811,13 @@ expect eof
 			iptables -A INPUT -p tcp -m tcp --dport 10000 -j ACCEPT
 			service iptables save
 		fi
-		output "${Green}The required firewall ports successfully opened!${Color_Off}"
+		output "${Green}The required firewall ports successfully opened!${Color_Off}\n"
+		output "${Cyan}Setting the permissions of directories and files...${Color_Off}"
 		chown -R apache:apache $SETUPDIR
-		chmod -R 777 $SETUPDIR
+		cd $SETUPDIR
+		find -type d -exec chmod 755 {} \;
+		find -type f -exec chmod 644 {} \;
+		output "${Green}The permissions of directories and files successfully set!${Color_Off}"
 		output "\n${Yellow}   ___             _   ________                "
 		output "  / _ \___ _______| | / /_  __/_______  __ _   "
 		output " / ___/ _ \`/ __(_-< |/ / / / _/ __/ _ \/  ' \ "
