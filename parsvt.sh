@@ -720,7 +720,7 @@ expect eof
 		CRMURL=$(string_replace "$CRMURL" "/")
 		wget -q -o /dev/null -O /dev/null "http://$CRMURL/_install.php?db_hostname=$DBHOST&db_name=$DBNAME&db_username=$DBUSER&db_password=$DBPassword"
 		wget -q -o /dev/null -O /dev/null "http://$CRMURL/_extensions.php?token=${RESPONSES[1]}"
-		grep "$SETUPDIR/cron/vtigercron.sh" /var/spool/cron/root || echo "*/15 * * * * sh $SETUPDIR/cron/vtigercron.sh >/dev/null 2>&1" >>/var/spool/cron/root
+		grep "http://$CRMURL/vtigercron.php" /var/spool/cron/root || echo "*/15 * * * * wget --spider \"http://$CRMURL/vtigercron.php\" >/dev/null 2>&1" >>/var/spool/cron/root
 		rm -rf $SETUPDIR/_install*
 		rm -rf $SETUPDIR/_extensions*
 		output "${Green}ParsVT CRM package successfully installed!${Color_Off}\n"
