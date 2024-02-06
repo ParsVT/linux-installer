@@ -617,7 +617,7 @@ else
 			else
 				yum install --enablerepo=remi,remi-php72 --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
 			fi
-			wget -q http://$primarySite/modules/addons/easyservice/Installer/pma.txt -O /etc/httpd/conf.d/phpMyAdmin.conf
+			wget -q http://raw.githubusercontent.com/ParsVT/linux-installer/main/assets/pma.txt -O /etc/httpd/conf.d/phpMyAdmin.conf
 			DBPassword=$(date +%s | sha256sum | base64 | head -c 20)
 			output "MySQL Username: ${DBUSER}\nMySQL Password: ${DBPassword}" >/root/mysql.txt
 			restartDatabase
@@ -676,7 +676,7 @@ expect eof
 ")
 			fi
 			echo "$SECURE_MYSQL"
-			wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlmode.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
+			wget -q http://raw.githubusercontent.com/ParsVT/linux-installer/main/assets/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
 			restartDatabase
 			output "${Green}MySQL (MariaDB) successfully installed!${Color_Off}\n"
 			output "${Cyan}Creating database...${Color_Off}"
@@ -758,8 +758,10 @@ expect eof
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
 			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.105-1.noarch.rpm -y
+			dnf install webmin -y
 		else
 			yum install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.105-1.noarch.rpm -y
+			yum install webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
