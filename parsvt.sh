@@ -331,7 +331,7 @@ else
 		cd /root
 		mkdir -p tzdatas
 		cd tzdatas
-		wget http://data.iana.org/time-zones/releases/tzdata2023d.tar.gz
+		wget http://data.iana.org/time-zones/releases/tzdata2023d.tar.gz -O tzdata2023d.tar.gz
 		tar -xzvf tzdata2023d.tar.gz
 		zic asia
 		zdump -v Asia/Tehran | grep "202[2-9]"
