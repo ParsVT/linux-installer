@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1402-11-17
+# Update: 1402-11-18
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -698,7 +698,10 @@ expect eof
 		fi
 		unzip -q -o $SETUPDIR/extensions.zip -d $SETUPDIR
 		chown -R apache:apache $SETUPDIR
-		chmod -R 777 $SETUPDIR
+		cd $SETUPDIR
+		find -type d -exec chmod 755 {} \;
+		find -type f -exec chmod 644 {} \;
+		cd /root
 		rm -rf $SETUPDIR/latest.zip*
 		rm -rf $SETUPDIR/extensions.zip*
 		if [ "$INSTALLTYPE" = "Exist" ]; then
@@ -813,13 +816,7 @@ expect eof
 			iptables -A INPUT -p tcp -m tcp --dport 10000 -j ACCEPT
 			service iptables save
 		fi
-		output "${Green}The required firewall ports successfully opened!${Color_Off}\n"
-		output "${Cyan}Setting the permissions of directories and files...${Color_Off}"
-		chown -R apache:apache $SETUPDIR
-		cd $SETUPDIR
-		find -type d -exec chmod 755 {} \;
-		find -type f -exec chmod 644 {} \;
-		output "${Green}The permissions of directories and files successfully set!${Color_Off}"
+		output "${Green}The required firewall ports successfully opened!${Color_Off}"
 		output "\n${Yellow}   ___             _   ________                "
 		output "  / _ \___ _______| | / /_  __/_______  __ _   "
 		output " / ___/ _ \`/ __(_-< |/ / / / _/ __/ _ \/  ' \ "
