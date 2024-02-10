@@ -831,7 +831,7 @@ expect eof
 		output "  Database Username: ${Yellow}$DBUSER${Color_Off}"
 		output "  Database Password: ${Yellow}$DBPassword${Color_Off}"
 		output "  Database Name:     ${Yellow}$DBNAME${Color_Off}\n"
-		output "Vtiger Information:\n  CRM URL:    http://$CRMURL\n  CRM Username:    admin\n  CRM Password:    $adminPWD" >/root/CRMInformation.txt
+		output "CRM URL:      http://$CRMURL\nCRM Username: admin\nCRM Password: $adminPWD" >/root/crm.txt
 		output "Vtiger Information:"
 		output "  CRM URL:           ${Yellow}http://$CRMURL${Color_Off}"
 		output "  CRM Username:      ${Yellow}admin${Color_Off}"
