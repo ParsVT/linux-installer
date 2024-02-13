@@ -198,11 +198,11 @@ mysqlConnection() {
 function string_replace {
 	echo "${1/\/\//$2}"
 }
-echo -e "${Yellow}██████   █████  ██████  ███████ ██    ██ ████████ "
-echo -e "██   ██ ██   ██ ██   ██ ██      ██    ██    ██    "
-echo -e "██████  ███████ ██████  ███████ ██    ██    ██    "
-echo -e "██      ██   ██ ██   ██      ██  ██  ██     ██    "
-echo -e "██      ██   ██ ██   ██ ███████   ████      ██    \n"
+echo -e "${Yellow}██████   █████  ██████  ███████ ██    ██ ████████"
+echo -e "██   ██ ██   ██ ██   ██ ██      ██    ██    ██   "
+echo -e "██████  ███████ ██████  ███████ ██    ██    ██   "
+echo -e "██      ██   ██ ██   ██      ██  ██  ██     ██   "
+echo -e "██      ██   ██ ██   ██ ███████   ████      ██   \n"
 echo -e "Shell script to install Apache, PHP, MySQL, VtigerCRM and ParsVT package on Linux."
 echo -e "Please run as root. if you are not, enter 'n' now and enter 'sudo su' before running the script."
 echo -e "Run the script? (y/n): ${Color_Off}"
@@ -818,10 +818,10 @@ expect eof
 			service iptables save
 		fi
 		output "${Green}The required firewall ports successfully opened!${Color_Off}"
-		output "\n${Yellow}   ___             _   ________              "
-		output "  / _ \___ _______| | / /_  __/______  __ _  "
-		output " / ___/ _ \`/ __(_-< |/ / / / / __/ _ \/  ' \ "
-		output "/_/   \_,_/_/ /___/___/ /_(_)\__/\___/_/_/_/ ${Color_Off}\n"
+		output "\n${Yellow}  ___            __   _______              "
+		output " | _ \__ _ _ _ __\ \ / /_   _|__ ___ _ __  "
+		output " |  _/ _\` | '_(_-<\ V /  | |_/ _/ _ \ '  \ "
+		output " |_| \__,_|_| /__/ \_/   |_(_)__\___/_|_|_|${Color_Off}\n"
 		output "${Green}The ParsVT installation was successfully completed!${Color_Off}\n"
 		output "Webmin Information:"
 		output "  Webmin URL:        ${Yellow}http://$ETH_DEV:10000${Color_Off}"
