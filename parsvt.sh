@@ -818,10 +818,10 @@ expect eof
 			service iptables save
 		fi
 		output "${Green}The required firewall ports successfully opened!${Color_Off}"
-		output "\n${Yellow}  ___            __   _______              "
-		output " | _ \__ _ _ _ __\ \ / /_   _|__ ___ _ __  "
-		output " |  _/ _\` | '_(_-<\ V /  | |_/ _/ _ \ '  \ "
-		output " |_| \__,_|_| /__/ \_/   |_(_)__\___/_|_|_|${Color_Off}\n"
+		output "\n${Yellow} ___            __   _______              "
+		output "| _ \__ _ _ _ __\ \ / /_   _|__ ___ _ __  "
+		output "|  _/ _\` | '_(_-<\ V /  | |_/ _/ _ \ '  \ "
+		output "|_| \__,_|_| /__/ \_/   |_(_)__\___/_|_|_|${Color_Off}\n"
 		output "${Green}The ParsVT installation was successfully completed!${Color_Off}\n"
 		output "Webmin Information:"
 		output "  Webmin URL:        ${Yellow}http://$ETH_DEV:10000${Color_Off}"
