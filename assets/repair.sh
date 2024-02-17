@@ -272,6 +272,8 @@ else
 				restoreDNS
 			fi
 			exit
+		else
+			output "${Green}Remi repository is already installed!${Color_Off}\n"
 		fi
 		if ! command -v "php" &>/dev/null; then
 			output "${Red}PHP is not installed!${Color_Off}"
