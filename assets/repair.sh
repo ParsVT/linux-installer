@@ -277,6 +277,9 @@ else
 			output "${Red}PHP is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		else
 			output "${Green}PHP is already installed!${Color_Off}\n"
@@ -303,6 +306,9 @@ else
 					output "${Red}ionCube loader version must be greater than 10.0.0${Color_Off}"
 					output "\n${Red}The operation aborted!${Color_Off}"
 					output "${Yellow}www.parsvt.com${Color_Off}\n"
+					if [ "$rundns" != "5" ]; then
+						restoreDNS
+					fi
 					exit
 				else
 					output "ionCube loader is not installed!"
@@ -315,6 +321,9 @@ else
 				output "${Red}PHP version must be greater than 5.5${Color_Off}"
 				output "\n${Red}The operation aborted!${Color_Off}"
 				output "${Yellow}www.parsvt.com${Color_Off}\n"
+				if [ "$rundns" != "5" ]; then
+					restoreDNS
+				fi
 				exit
 			fi
 		fi
@@ -322,6 +331,9 @@ else
 			output "${Red}Apache is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		else
 			output "${Green}Apache is already installed!${Color_Off}\n"
@@ -362,6 +374,9 @@ else
 			output "${Red}MySQL is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		fi
 		if java -version 2>&1 >/dev/null | grep -q "java version"; then
