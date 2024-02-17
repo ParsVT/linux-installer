@@ -601,6 +601,7 @@ else
 		sed -i -e 's/default_socket_timeout = 60/default_socket_timeout = 600/g' $PHPINI
 		sed -i -e 's/session.use_strict_mode = 0/session.use_strict_mode = 1/g' $PHPINI
 		sed -i -e 's/session.cookie_httponly =/session.cookie_httponly = 1/g' $PHPINI
+		sed -i -e 's/session.cookie_secure = 1/;session.cookie_secure =/g' $PHPINI
 		sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
 		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
 		sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
