@@ -789,6 +789,7 @@ expect eof
 			firewall-cmd --zone=public --permanent --add-port=587/tcp
 			firewall-cmd --zone=public --permanent --add-port=465/tcp
 			firewall-cmd --zone=public --permanent --add-port=3306/tcp
+			firewall-cmd --zone=public --permanent --add-port=5038/tcp
 			firewall-cmd --zone=public --permanent --add-port=9999/tcp
 			firewall-cmd --zone=public --permanent --add-port=7777/tcp
 			firewall-cmd --zone=public --permanent --add-port=2222/tcp
@@ -809,6 +810,7 @@ expect eof
 			iptables -A INPUT -p tcp -m tcp --dport 587 -j ACCEPT
 			iptables -A INPUT -p tcp -m tcp --dport 465 -j ACCEPT
 			iptables -A INPUT -p tcp -m tcp --dport 3306 -j ACCEPT
+			iptables -A INPUT -p tcp -m tcp --dport 5038 -j ACCEPT
 			iptables -A INPUT -p tcp -m tcp --dport 9999 -j ACCEPT
 			iptables -A INPUT -p tcp -m tcp --dport 7777 -j ACCEPT
 			iptables -A INPUT -p tcp -m tcp --dport 2222 -j ACCEPT
