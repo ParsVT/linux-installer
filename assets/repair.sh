@@ -301,7 +301,7 @@ else
 				elif [ "$IONCUBE_VER" = "Upgrade" ]; then
 					output "Current ionCube loader version: ${Red}${IONCUBE_VERSION}${Color_Off}"
 					output "\n${Cyan}Updating ionCube loader...${Color_Off}"
-					installioncube
+					installIonCube
 					output "${Green}ionCube loader successfully updated!${Color_Off}\n"
 				elif [ "$IONCUBE_VER" = "Failed" ]; then
 					output "Current ionCube loader version: ${Red}${IONCUBE_VERSION}${Color_Off}"
@@ -315,7 +315,7 @@ else
 				else
 					output "ionCube loader is not installed!"
 					output "\n${Cyan}Installing ionCube loader...${Color_Off}"
-					installioncube
+					installIonCube
 					output "${Green}ionCube loader successfully installed!${Color_Off}\n"
 				fi
 			else
