@@ -152,10 +152,8 @@ installIonCube() {
 	rm -rf ioncube_loaders_lin*.tar.gz*
 	if [ "$OS" = "x86_64" ]; then
 		wget http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
-		#wget http://$primarySite/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86-64.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
 	else
 		wget http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
-		#wget http://$primarySite/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
 	fi
 	tar xfz ioncube_loaders_lin_x86-64.tar.gz
 	PHP_CONFD="/etc/php.d"
