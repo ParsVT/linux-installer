@@ -184,6 +184,7 @@ else
 			if [ -f "/etc/centos-release" ]; then
 				if echo "$fullname" | grep "CentOS Stream"; then
 					output "\n${Cyan}Updating installed packages...${Color_Off}"
+					yum clean all
 					yum install dnf -y
 					dnf update -y
 					output "${Green}Installed packages successfully updated!${Color_Off}\n"
@@ -193,23 +194,27 @@ else
 					dnf distro-sync -y
 					output "${Green}CentOS successfully converted!${Color_Off}\n"
 					output "${Cyan}Updating installed packages...${Color_Off}"
+					yum clean all
 					yum install dnf -y
 					dnf update -y
 					output "${Green}Installed packages successfully updated!${Color_Off}\n"
 				fi
 			else
 				output "\n${Cyan}Updating installed packages...${Color_Off}"
+				yum clean all
 				yum install dnf -y
 				dnf update -y
 				output "${Green}Installed packages successfully updated!${Color_Off}\n"
 			fi
 		elif [ "$major" = "7" ]; then
 			output "${Cyan}Updating installed packages...${Color_Off}"
+			yum clean all
 			yum install dnf -y
 			dnf update -y
 			output "${Green}Installed packages successfully updated!${Color_Off}\n"
 		else
 			output "${Cyan}Updating installed packages...${Color_Off}"
+			yum clean all
 			yum update -y
 			output "${Green}Installed packages successfully updated!${Color_Off}\n"
 		fi
@@ -293,8 +298,10 @@ else
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
 				output "Checking the ionCube loader version..."
 				wget -q http://raw.githubusercontent.com/ParsVT/linux-installer/main/assets/ic.txt -O /root/IC.php
+				set +e
 				IONCUBE_VER=$(php -f /root/IC.php)
 				IONCUBE_VERSION=$(php -r "error_reporting(0); echo ioncube_loader_version();")
+				set -e
 				rm -rf /root/IC.php*
 				if [ "$IONCUBE_VER" = "Ok" ]; then
 					output "Current ionCube loader version: ${Green}${IONCUBE_VERSION}${Color_Off}\n"
