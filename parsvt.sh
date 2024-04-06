@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1402-11-18
+# Update: 1403-01-18
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -151,9 +151,9 @@ installIonCube() {
 	cd /tmp
 	rm -rf ioncube_loaders_lin*.tar.gz*
 	if [ "$OS" = "x86_64" ]; then
-		wget http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
+		wget http://$primarySite/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86-64.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
 	else
-		wget http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
+		wget http://$primarySite/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
 	fi
 	tar xfz ioncube_loaders_lin_x86-64.tar.gz
 	PHP_CONFD="/etc/php.d"
@@ -332,8 +332,8 @@ else
 		cd /root
 		mkdir -p tzdatas
 		cd tzdatas
-		wget http://data.iana.org/time-zones/releases/tzdata2023d.tar.gz -O tzdata2023d.tar.gz
-		tar -xzvf tzdata2023d.tar.gz
+		wget http://$primarySite/modules/addons/easyservice/Installer/tzdata2024a.tar.gz -O tzdata2024a.tar.gz
+		tar -xzvf tzdata2024a.tar.gz
 		zic asia
 		zdump -v Asia/Tehran | grep "202[2-9]"
 		zic -l Asia/Tehran
@@ -363,50 +363,16 @@ else
 			output "${Cyan}Installing Remi repository...${Color_Off}"
 			file="/etc/yum.repos.d/remi.repo"
 			if [ ! -f "$file" ]; then
-				dnf install http://dl.fedoraproject.org/pub/epel/epel-release-latest-$major.noarch.rpm -y
-				dnf install http://rpms.remirepo.net/enterprise/remi-release-$major.rpm -y
-			fi
-		elif [ "$major" = "6" ]; then
-			output "${Cyan}Installing Remi repository...${Color_Off}"
-			file="/etc/yum.repos.d/remi.repo"
-			if [ ! -f "$file" ]; then
-				if [ "$OS" = "x86_64" ]; then
-					yum install http://dl.fedoraproject.org/pub/archive/epel/6/x86_64/epel-release-6-8.noarch.rpm -y
-				else
-					yum install http://dl.fedoraproject.org/pub/archive/epel/6/i386/epel-release-6-8.noarch.rpm -y
-				fi
-				yum install http://rpms.remirepo.net/enterprise/remi-release-$major.rpm -y
-			fi
-		elif [ "$major" = "5" ]; then
-			output "${Cyan}Installing Remi repository...${Color_Off}"
-			file="/etc/yum.repos.d/remi.repo"
-			if [ ! -f "$file" ]; then
-				if [ "$OS" = "x86_64" ]; then
-					yum install http://dl.fedoraproject.org/pub/archive/epel/5/x86_64/epel-release-5-4.noarch.rpm -y
-				else
-					yum install http://dl.fedoraproject.org/pub/archive/epel/5/i386/epel-release-5-4.noarch.rpm -y
-				fi
-				yum install http://rpms.remirepo.net/enterprise/remi-release-$major.rpm -y
-			fi
-		elif [ "$major" = "4" ]; then
-			output "${Cyan}Installing Remi repository...${Color_Off}"
-			file="/etc/yum.repos.d/remi.repo"
-			if [ ! -f "$file" ]; then
-				if [ "$OS" = "x86_64" ]; then
-					yum install http://dl.fedoraproject.org/pub/archive/epel/4/x86_64/epel-release-4-10.noarch.rpm -y
-				else
-					yum install http://dl.fedoraproject.org/pub/archive/epel/4/i386/epel-release-4-10.noarch.rpm -y
-				fi
-				yum install http://rpms.remirepo.net/enterprise/remi-release-$major.rpm -y
+				dnf install http://$primarySite/modules/addons/easyservice/Installer/epel-release-latest-$major.noarch.rpm -y
+				dnf install http://$primarySite/modules/addons/easyservice/Installer/remi-release-$major.rpm -y
 			fi
 		else
-			output "${Red}OS version is incorrect!${Color_Off}"
-			output "\n${Red}The operation aborted!${Color_Off}"
-			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
+			output "${Cyan}Installing Remi repository...${Color_Off}"
+			file="/etc/yum.repos.d/remi.repo"
+			if [ ! -f "$file" ]; then
+				yum install http://$primarySite/modules/addons/easyservice/Installer/epel-release-latest-$major.noarch.rpm -y
+				yum install http://$primarySite/modules/addons/easyservice/Installer/remi-release-$major.rpm -y
 			fi
-			exit
 		fi
 		if [ "$major" = "8" ]; then
 			dnf config-manager --set-enabled powertools
@@ -525,7 +491,7 @@ else
 				cd /root
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
 				output "Checking the ionCube loader version..."
-				wget -q http://raw.githubusercontent.com/ParsVT/linux-installer/main/assets/ic.txt -O /root/IC.php
+				wget -q http://$primarySite/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
 				set +e
 				IONCUBE_VER=$(php -f /root/IC.php)
 				IONCUBE_VERSION=$(php -r "error_reporting(0); echo ioncube_loader_version();")
@@ -621,7 +587,7 @@ else
 			else
 				yum install --enablerepo=remi,remi-php72 --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
 			fi
-			wget -q http://raw.githubusercontent.com/ParsVT/linux-installer/main/assets/pma.txt -O /etc/httpd/conf.d/phpMyAdmin.conf
+			wget -q http://$primarySite/modules/addons/easyservice/Installer/pma.txt -O /etc/httpd/conf.d/phpMyAdmin.conf
 			DBPassword=$(date +%s | sha256sum | base64 | head -c 20)
 			output "MySQL Username: ${DBUSER}\nMySQL Password: ${DBPassword}" >/root/mysql.txt
 			restartDatabase
@@ -680,7 +646,7 @@ expect eof
 ")
 			fi
 			echo "$SECURE_MYSQL"
-			wget -q http://raw.githubusercontent.com/ParsVT/linux-installer/main/assets/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
+			wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
 			restartDatabase
 			output "${Green}MySQL (MariaDB) successfully installed!${Color_Off}\n"
 			output "${Cyan}Creating database...${Color_Off}"
