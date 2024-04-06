@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Repair Script
 # Developer: Mohammad Hadadpour
 # Release: 1402-11-28
-# Update: 1402-11-28
+# Update: 1403-01-18
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -82,9 +82,9 @@ installIonCube() {
 	cd /tmp
 	rm -rf ioncube_loaders_lin*.tar.gz*
 	if [ "$OS" = "x86_64" ]; then
-		wget http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
+		wget http://aweb.co/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86-64.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
 	else
-		wget http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
+		wget http://aweb.co/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
 	fi
 	tar xfz ioncube_loaders_lin_x86-64.tar.gz
 	PHP_CONFD="/etc/php.d"
@@ -241,8 +241,8 @@ else
 		cd /root
 		mkdir -p tzdatas
 		cd tzdatas
-		wget http://data.iana.org/time-zones/releases/tzdata2023d.tar.gz -O tzdata2023d.tar.gz
-		tar -xzvf tzdata2023d.tar.gz
+		wget http://aweb.co/modules/addons/easyservice/Installer/tzdata2024a.tar.gz -O tzdata2024a.tar.gz
+		tar -xzvf tzdata2024a.tar.gz
 		zic asia
 		zdump -v Asia/Tehran | grep "202[2-9]"
 		zic -l Asia/Tehran
@@ -297,7 +297,7 @@ else
 				cd /root
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
 				output "Checking the ionCube loader version..."
-				wget -q http://raw.githubusercontent.com/ParsVT/linux-installer/main/assets/ic.txt -O /root/IC.php
+				wget -q http://aweb.co/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
 				set +e
 				IONCUBE_VER=$(php -f /root/IC.php)
 				IONCUBE_VERSION=$(php -r "error_reporting(0); echo ioncube_loader_version();")
