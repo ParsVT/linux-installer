@@ -484,6 +484,22 @@ else
 			output "${Green}ionCube loader successfully installed!${Color_Off}\n"
 		else
 			output "\n${Green}PHP is already installed!${Color_Off}\n"
+			if ! command -v "httpd" &>/dev/null; then
+				output "${Cyan}Installing Apache...${Color_Off}"
+				if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+					dnf install --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot -y
+				else
+					yum install --enablerepo=remi,remi-php72 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot -y
+				fi
+				if [ "$major" = "6" ]; then
+					chkconfig httpd on
+					iptables -I INPUT -p tcp -m tcp --dport 80 -j ACCEPT
+					service iptables save
+				else
+					systemctl enable httpd
+				fi
+				output "${Green}Apache successfully installed!${Color_Off}\n"
+			fi
 			output "Checking the PHP version..."
 			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'5.6.0','>')) echo 'Ok'; else echo 'Failed';")
 			PHP_VERSION=$(php -r "echo PHP_VERSION;")
@@ -535,15 +551,6 @@ else
 					restoreDNS
 				fi
 				exit
-			fi
-			if ! command -v "httpd" &>/dev/null; then
-				output "${Cyan}Installing Apache...${Color_Off}"
-				if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-					dnf install --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot -y
-				else
-					yum install --enablerepo=remi,remi-php72 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot -y
-				fi
-				output "${Green}Apache successfully installed!${Color_Off}\n"
 			fi
 		fi
 		getPHPConfigPath
