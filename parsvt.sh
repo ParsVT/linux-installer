@@ -553,7 +553,7 @@ else
 		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.1.tgz -O timezonedb-2024.1.tgz
 		pear install timezonedb-2024.1.tgz
 		if ! grep -rnw "$PHPINI" -e "extension=timezonedb.so"; then
-			echo "extension=timezonedb.so" >> "$PHPINI";
+			echo "extension=timezonedb.so" >>"$PHPINI"
 		fi
 		restartApache
 		date
