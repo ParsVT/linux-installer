@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-01-18
+# Update: 1403-02-08
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -328,20 +328,6 @@ else
 			fi
 			exit
 		fi
-		output "${Cyan}Updating time zone...${Color_Off}"
-		cd /root
-		mkdir -p tzdatas
-		cd tzdatas
-		wget http://$primarySite/modules/addons/easyservice/Installer/tzdata2024a.tar.gz -O tzdata2024a.tar.gz
-		tar -xzvf tzdata2024a.tar.gz
-		zic asia
-		zdump -v Asia/Tehran | grep "202[2-9]"
-		zic -l Asia/Tehran
-		date
-		hwclock
-		rm -rf /root/tzdatas*
-		cd /root
-		output "${Green}Time zone successfully updated!${Color_Off}\n"
 		file="/etc/ntp.conf"
 		if [ ! -f "$file" ]; then
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
@@ -553,8 +539,29 @@ else
 				exit
 			fi
 		fi
+		output "${Cyan}Updating time zone...${Color_Off}"
+		cd /root
+		mkdir -p tzdatas
+		cd tzdatas
+		wget http://$primarySite/modules/addons/easyservice/Installer/tzdata2024a.tar.gz -O tzdata2024a.tar.gz
+		tar -xzvf tzdata2024a.tar.gz
+		zic asia
+		zdump -v Asia/Tehran | grep "202[2-9]"
+		zic -l Asia/Tehran
 		getPHPConfigPath
+		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.1.tgz -O timezonedb-2024.1.tgz
+		pear install timezonedb-2024.1.tgz
+		if ! grep -rnw "$PHPINI" -e "extension=timezonedb.so"; then
+			echo "extension=timezonedb.so" >> "$PHPINI";
+		fi
+		restartApache
+		date
+		hwclock
+		rm -rf /root/tzdatas*
+		cd /root
+		output "${Green}Time zone successfully updated!${Color_Off}\n"
 		output "${Cyan}Setting ParsVT requirements...${Color_Off}"
+		getPHPConfigPath
 		sed -i -e 's/max_execution_time = 30/max_execution_time = 600/g' $PHPINI
 		sed -i -e 's/memory_limit = 128M/memory_limit = 512M/g' $PHPINI
 		sed -i -e 's/allow_call_time_pass_reference = Off/allow_call_time_pass_reference = On/g' $PHPINI
