@@ -338,13 +338,13 @@ else
 		cd /root
 		mkdir -p tzdatas
 		cd tzdatas
-		wget http://$primarySite/modules/addons/easyservice/Installer/tzdata2024a.tar.gz -O tzdata2024a.tar.gz
+		wget http://aweb.co/modules/addons/easyservice/Installer/tzdata2024a.tar.gz -O tzdata2024a.tar.gz
 		tar -xzvf tzdata2024a.tar.gz
 		zic asia
 		zdump -v Asia/Tehran | grep "202[2-9]"
 		zic -l Asia/Tehran
 		getPHPConfigPath
-		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.1.tgz -O timezonedb-2024.1.tgz
+		wget http://aweb.co/modules/addons/easyservice/Installer/timezonedb-2024.1.tgz -O timezonedb-2024.1.tgz
 		pear install -f timezonedb-2024.1.tgz
 		if ! grep -rnw "$PHPINI" -e "extension=timezonedb.so"; then
 			echo "extension=timezonedb.so" >>"$PHPINI"
