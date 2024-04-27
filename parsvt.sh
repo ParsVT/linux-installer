@@ -220,6 +220,7 @@ else
 		sleep 10
 	fi
 	checkInternetConnection
+	restoreDNS
 	setDNS
 	output "\n${Cyan}Checking operating system...${Color_Off}"
 	if [ ! -f "/etc/centos-release" ] && [ ! -f "/etc/redhat-release" ]; then
