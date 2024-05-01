@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-02-08
+# Update: 1403-02-12
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -40,7 +40,7 @@ output() {
 }
 checkInternetConnection() {
 	TIMESTAMP=$(date +%s)
-	ping -c 1 -W 0.7 8.8.8.8 >/dev/null 2>&1
+	ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1
 	if [ $? -eq 0 ]; then
 		echo -e "\n${Green}Internet connection is UP $(date +%Y-%m-%d_%H:%M:%S_%Z) $(($(date +%s) - $TIMESTAMP))${Color_Off}"
 		INTERNET_STATUS="UP"
@@ -745,10 +745,8 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.105-1.noarch.rpm -y
 			dnf install webmin -y
 		else
-			yum install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.105-1.noarch.rpm -y
 			yum install webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
