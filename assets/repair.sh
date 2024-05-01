@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Repair Script
 # Developer: Mohammad Hadadpour
 # Release: 1402-11-28
-# Update: 1403-02-08
+# Update: 1403-02-12
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -24,7 +24,7 @@ output() {
 }
 checkInternetConnection() {
 	TIMESTAMP=$(date +%s)
-	ping -c 1 -W 0.7 8.8.8.8 >/dev/null 2>&1
+	ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1
 	if [ $? -eq 0 ]; then
 		echo -e "\n${Green}Internet connection is UP $(date +%Y-%m-%d_%H:%M:%S_%Z) $(($(date +%s) - $TIMESTAMP))${Color_Off}"
 		INTERNET_STATUS="UP"
