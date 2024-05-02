@@ -588,6 +588,7 @@ else
 		sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
 		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
 		sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
+		sed -i -e 's/php_admin_flag[log_errors] = on/;php_admin_flag[log_errors] = on/g' /etc/php-fpm.d/www.conf
 		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
 		restartApache
 		output "${Green}The ParsVT requirements have been set!${Color_Off}\n"
