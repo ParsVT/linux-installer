@@ -745,8 +745,10 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.105-1.noarch.rpm -y
 			dnf install webmin -y
 		else
+			yum install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.105-1.noarch.rpm -y
 			yum install webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
