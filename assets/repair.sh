@@ -344,11 +344,13 @@ else
 		zdump -v Asia/Tehran | grep "202[2-9]"
 		zic -l Asia/Tehran
 		getPHPConfigPath
+		set +e
 		wget http://aweb.co/modules/addons/easyservice/Installer/timezonedb-2024.1.tgz -O timezonedb-2024.1.tgz
 		pear install -f timezonedb-2024.1.tgz
 		if ! grep -rnw "$PHPINI" -e "extension=timezonedb.so"; then
 			echo "extension=timezonedb.so" >>"$PHPINI"
 		fi
+		set -e
 		restartApache
 		date
 		hwclock
