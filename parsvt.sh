@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-02-12
+# Update: 1403-02-30
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -312,9 +312,9 @@ else
 		fi
 		output "${Cyan}Installing required packages...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs -y
+			dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
 		else
-			yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs -y
+			yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
 		fi
 		output "${Green}required packages successfully installed!${Color_Off}\n"
 		wgetfile="/usr/bin/wget"
@@ -540,15 +540,10 @@ else
 				exit
 			fi
 		fi
-		output "${Cyan}Updating time zone...${Color_Off}"
+		output "${Cyan}Installing timezonedb extension...${Color_Off}"
 		cd /root
-		mkdir -p tzdatas
-		cd tzdatas
-		wget http://$primarySite/modules/addons/easyservice/Installer/tzdata2024a.tar.gz -O tzdata2024a.tar.gz
-		tar -xzvf tzdata2024a.tar.gz
-		zic asia
-		zdump -v Asia/Tehran | grep "202[2-9]"
-		zic -l Asia/Tehran
+		mkdir -p timezonedb
+		cd timezonedb
 		getPHPConfigPath
 		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.1.tgz -O timezonedb-2024.1.tgz
 		pear install timezonedb-2024.1.tgz
@@ -558,9 +553,9 @@ else
 		restartApache
 		date
 		hwclock
-		rm -rf /root/tzdatas*
+		rm -rf /root/timezonedb*
 		cd /root
-		output "${Green}Time zone successfully updated!${Color_Off}\n"
+		output "${Green}timezonedb extension successfully installed!${Color_Off}\n"
 		output "${Cyan}Setting ParsVT requirements...${Color_Off}"
 		getPHPConfigPath
 		sed -i -e 's/max_execution_time = 30/max_execution_time = 600/g' $PHPINI
@@ -719,19 +714,19 @@ expect eof
 			output "${Cyan}Installing Java libraries...${Color_Off}"
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
 				if [ "$OS" = "x86_64" ]; then
-					dnf install http://$secondarySite/JAVA/jdk-8u391-linux-x64.rpm -y
-					dnf install http://$secondarySite/JAVA/jre-8u391-linux-x64.rpm -y
+					dnf install http://$secondarySite/JAVA/jdk-8u411-linux-x64.rpm -y
+					dnf install http://$secondarySite/JAVA/jre-8u411-linux-x64.rpm -y
 				else
-					dnf install http://$secondarySite/JAVA/jdk-8u391-linux-i586.rpm -y
-					dnf install http://$secondarySite/JAVA/jre-8u391-linux-i586.rpm -y
+					dnf install http://$secondarySite/JAVA/jdk-8u411-linux-i586.rpm -y
+					dnf install http://$secondarySite/JAVA/jre-8u411-linux-i586.rpm -y
 				fi
 			else
 				if [ "$OS" = "x86_64" ]; then
-					yum install http://$secondarySite/JAVA/jdk-8u391-linux-x64.rpm -y
-					yum install http://$secondarySite/JAVA/jre-8u391-linux-x64.rpm -y
+					yum install http://$secondarySite/JAVA/jdk-8u411-linux-x64.rpm -y
+					yum install http://$secondarySite/JAVA/jre-8u411-linux-x64.rpm -y
 				else
-					yum install http://$secondarySite/JAVA/jdk-8u391-linux-i586.rpm -y
-					yum install http://$secondarySite/JAVA/jre-8u391-linux-i586.rpm -y
+					yum install http://$secondarySite/JAVA/jdk-8u411-linux-i586.rpm -y
+					yum install http://$secondarySite/JAVA/jre-8u411-linux-i586.rpm -y
 				fi
 			fi
 			output "${Green}Java libraries successfully installed!${Color_Off}\n"
@@ -746,10 +741,10 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.110-1.noarch.rpm -y
+			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.111-1.noarch.rpm -y
 			dnf install webmin -y
 		else
-			yum install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.110-1.noarch.rpm -y
+			yum install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.111-1.noarch.rpm -y
 			yum install webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
