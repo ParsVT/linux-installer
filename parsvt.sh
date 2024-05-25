@@ -3,11 +3,11 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-02-30
+# Update: 1403-03-05
 # #########################################
 set -e
-shecanDNS1="178.22.122.100"
-shecanDNS2="185.51.200.2"
+shecanDNS1="178.22.122.101"
+shecanDNS2="185.51.200.1"
 googleDNS1="8.8.8.8"
 googleDNS2="8.8.4.4"
 cloudflareDNS1="1.1.1.1"
@@ -55,7 +55,7 @@ checkInternetConnection() {
 }
 setDNS() {
 	echo -e "\nPlease enter the item number you want to use as DNS during installation:\n"
-	echo -e "[${Cyan}1${Color_Off}] Shecan (recommended)"
+	echo -e "[${Cyan}1${Color_Off}] Shecan Pro (recommended)"
 	echo -e "[${Cyan}2${Color_Off}] Google"
 	echo -e "[${Cyan}3${Color_Off}] Cloudflare"
 	echo -e "[${Yellow}4${Color_Off}] Continue without changing DNS\n"
@@ -63,6 +63,8 @@ setDNS() {
 	if [ "$rundns" == "1" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
+		shecanURI=$(echo -n "${RESPONSES[3]}" | base64 --decode)
+		curl -s -o /dev/null "${shecanURI}"
 	elif [ "$rundns" == "2" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
@@ -221,7 +223,6 @@ else
 	fi
 	checkInternetConnection
 	restoreDNS
-	setDNS
 	output "\n${Cyan}Checking operating system...${Color_Off}"
 	if [ ! -f "/etc/centos-release" ] && [ ! -f "/etc/redhat-release" ]; then
 		output "\n${Red}The operating system is not supported!${Color_Off}"
@@ -267,6 +268,69 @@ else
 				output "Arch: ${Yellow}32-bit${Color_Off}"
 			fi
 		fi
+		IPS=$(hostname --all-ip-addresses)
+		ipsarray=($IPS)
+		if [ -n "$ipsarray" ]; then
+			ipnums=${#ipsarray[@]}
+			if (($ipnums > 1)); then
+				output "\nThe following ethernet devices were found! Please enter the item number you want to use: "
+				COUNT=0
+				for i in "${ipsarray[@]}"; do
+					:
+					output "# $COUNT - $i"
+					COUNT=$(($COUNT + 1))
+				done
+				read -p "Please select an IP address: " DEVS
+				if [ -z "${ipsarray[$DEVS]}" ]; then
+					output "${Red}Invalid ethernet adapter!${Color_Off}"
+					output "\n${Red}The operation aborted!${Color_Off}"
+					output "${Yellow}www.parsvt.com${Color_Off}\n"
+					if [ "$rundns" != "5" ]; then
+						restoreDNS
+					fi
+					exit
+				fi
+				echo -n "Should IP address ($(tput bold)${ipsarray[$DEVS]}$(tput sgr0)) be used for licensing? (y/n): "
+				read yesno
+				if [ "$yesno" = "n" ]; then
+					output "\n${Red}The operation aborted!${Color_Off}"
+					output "${Yellow}www.parsvt.com${Color_Off}\n"
+					if [ "$rundns" != "5" ]; then
+						restoreDNS
+					fi
+					exit
+				else
+					ETH_DEV=${ipsarray[$DEVS]}
+				fi
+			else
+				ETH_DEV=${ipsarray[0]}
+			fi
+		else
+			output "${Red}Your ethernet device was not found!${Color_Off}"
+			output "\n${Red}The operation aborted!${Color_Off}"
+			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
+			exit
+		fi
+		output "\nParsVT CRM will be installed on $(tput bold)${ETH_DEV}$(tput sgr0)\n"
+		checkLicense
+		output "\n${Yellow}${LICENSEKEY}${Color_Off} will be used as the license key."
+		RESPONSE=$(curl -fs -d "licenseid=$LICENSEKEY&serverip=$ETH_DEV" -H "Content-Type: application/x-www-form-urlencoded" -X POST "http://$primarySite/modules/addons/easyservice/Installer/check.php")
+		IFS=';' read -ra RESPONSES <<<"$RESPONSE"
+		if [ "${RESPONSES[0]}" != "Active" ] || [ "${#RESPONSES[2]}" == 0 ]; then
+			output "\nLicense key status: ${Red}${RESPONSES[0]}!${Color_Off}"
+			output "\n${Red}${RESPONSES[1]}${Color_Off}"
+			output "For more information, please contact us."
+			output "\n${Red}The operation aborted!${Color_Off}"
+			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
+			exit
+		fi
+		setDNS
 		output "\n${Cyan}Disabling SELinux...${Color_Off}"
 		STATUS=$(getenforce)
 		if [ "$STATUS" = "disabled" ] || [ "$STATUS" = "Disabled" ]; then
@@ -375,69 +439,6 @@ else
 		if [ ! -f "$file" ]; then
 			output "${Red}Remi repository failed to install!${Color_Off}"
 			output "${Red}Please check the server's internet connection and DNS settings and run the installer again.${Color_Off}"
-			output "\n${Red}The operation aborted!${Color_Off}"
-			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
-			exit
-		fi
-		IPS=$(hostname --all-ip-addresses)
-		ipsarray=($IPS)
-		if [ -n "$ipsarray" ]; then
-			ipnums=${#ipsarray[@]}
-			if (($ipnums > 1)); then
-				output "The following ethernet devices were found! Please enter the item number you want to use: "
-				COUNT=0
-				for i in "${ipsarray[@]}"; do
-					:
-					output "# $COUNT - $i"
-					COUNT=$(($COUNT + 1))
-				done
-				read -p "Please select an IP address: " DEVS
-				if [ -z "${ipsarray[$DEVS]}" ]; then
-					output "${Red}Invalid ethernet adapter!${Color_Off}"
-					output "\n${Red}The operation aborted!${Color_Off}"
-					output "${Yellow}www.parsvt.com${Color_Off}\n"
-					if [ "$rundns" != "5" ]; then
-						restoreDNS
-					fi
-					exit
-				fi
-				echo -n "Should IP address ($(tput bold)${ipsarray[$DEVS]}$(tput sgr0)) be used for licensing? (y/n): "
-				read yesno
-				if [ "$yesno" = "n" ]; then
-					output "\n${Red}The operation aborted!${Color_Off}"
-					output "${Yellow}www.parsvt.com${Color_Off}\n"
-					if [ "$rundns" != "5" ]; then
-						restoreDNS
-					fi
-					exit
-				else
-					ETH_DEV=${ipsarray[$DEVS]}
-				fi
-			else
-				ETH_DEV=${ipsarray[0]}
-			fi
-		else
-			output "${Red}Your ethernet device was not found!${Color_Off}"
-			output "\n${Red}The operation aborted!${Color_Off}"
-			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
-			exit
-		fi
-		output "ParsVT CRM will be installed on $(tput bold)${ETH_DEV}$(tput sgr0)\n"
-		checkLicense
-		output "\n${Yellow}${LICENSEKEY}${Color_Off} will be used as the license key."
-		RESPONSE=$(curl -fs -d "licenseid=$LICENSEKEY&serverip=$ETH_DEV" -H "Content-Type: application/x-www-form-urlencoded" -X POST "http://$primarySite/modules/addons/easyservice/Installer/check.php")
-		IFS=';' read -ra RESPONSES <<<"$RESPONSE"
-		if [ "${RESPONSES[0]}" != "Active" ] || [ "${#RESPONSES[2]}" == 0 ]; then
-			output "\n${Red}The operation aborted!${Color_Off}"
-			output "${Red}License key status: ${RESPONSES[0]}${Color_Off}"
-			output "${Red}${RESPONSES[1]}${Color_Off}"
-			output "For more information, please contact us."
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
 			if [ "$rundns" != "5" ]; then
