@@ -61,10 +61,10 @@ setDNS() {
 	echo -e "[${Yellow}4${Color_Off}] Continue without changing DNS\n"
 	read -p "Please select an item (1-4): " rundns
 	if [ "$rundns" == "1" ]; then
-		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
 		shecanURI=$(echo -n "${RESPONSES[3]}" | base64 --decode)
 		curl -s -o /dev/null "${shecanURI}"
+		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
+		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
 	elif [ "$rundns" == "2" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
