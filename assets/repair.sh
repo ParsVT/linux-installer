@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Repair Script
 # Developer: Mohammad Hadadpour
 # Release: 1402-11-28
-# Update: 1403-02-30
+# Update: 1403-03-10
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -31,7 +31,7 @@ checkInternetConnection() {
 	else
 		echo -e "\n${Red}Internet connection is DOWN $(date +%Y-%m-%d_%H:%M:%S_%Z) $(($(date +%s) - $TIMESTAMP))${Color_Off}"
 		INTERNET_STATUS="DOWN"
-		output "${Red}Please check the server's internet connection and run the script again.${Color_Off}"
+		output "Please check the server's internet connection and DNS settings and run the installer again."
 		output "\n${Red}The operation aborted!${Color_Off}"
 		output "${Yellow}www.parsvt.com${Color_Off}\n"
 		exit
@@ -81,7 +81,7 @@ restartApache() {
 installIonCube() {
 	cd /tmp
 	rm -rf ioncube_loaders_lin*.tar.gz*
-	if [ "$OS" = "x86_64" ]; then
+	if [ "$ARCH" = "x86_64" ]; then
 		wget http://aweb.co/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86-64.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
 	else
 		wget http://aweb.co/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
@@ -126,11 +126,9 @@ else
 	fi
 	checkInternetConnection
 	restoreDNS
-	setDNS
-	output "\n${Cyan}Checking operating system...${Color_Off}"
-	if [ ! -f "/etc/centos-release" ] && [ ! -f "/etc/redhat-release" ]; then
-		output "\n${Red}The operating system is not supported!${Color_Off}"
-		output "${Red}The ParsVT repair script only works on CentOS and RHEL-based Linuxes.${Color_Off}"
+	if [ ! -f "/etc/redhat-release" ]; then
+		output "\n${Red}Operating system is not supported!${Color_Off}"
+		output "ParsVT repair script only works on CentOS and RHEL-based Linuxes."
 		output "\n${Red}The operation aborted!${Color_Off}"
 		output "${Yellow}www.parsvt.com${Color_Off}\n"
 		if [ "$rundns" != "5" ]; then
@@ -138,39 +136,11 @@ else
 		fi
 		exit
 	else
-		if [ -f "/etc/centos-release" ]; then
-			fullname=$(cat /etc/centos-release)
-			full=$(cat /etc/centos-release | tr -dc '0-9.')
-			major=$(cat /etc/centos-release | tr -dc '0-9.' | cut -d \. -f1)
-			minor=$(cat /etc/centos-release | tr -dc '0-9.' | cut -d \. -f2)
-			OS=$(uname -m | grep '64')
-			output "${Green}Done!${Color_Off}\n"
-			output "Operating system information:"
-			output "CentOS version: ${Yellow}${full}${Color_Off}"
-			output "Major release: ${Yellow}${major}${Color_Off}"
-			output "Minor release: ${Yellow}${minor}${Color_Off}"
-			if [ "$OS" = "x86_64" ]; then
-				output "Arch: ${Yellow}64-bit${Color_Off}"
-			else
-				output "Arch: ${Yellow}32-bit${Color_Off}"
-			fi
-		else
-			fullname=$(cat /etc/redhat-release)
-			full=$(cat /etc/redhat-release | tr -dc '0-9.')
-			major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
-			minor=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f2)
-			OS=$(uname -m | grep '64')
-			output "${Green}Done!${Color_Off}\n"
-			output "Operating system information:"
-			output "RedHat version: ${Yellow}${full}${Color_Off}"
-			output "Major release: ${Yellow}${major}${Color_Off}"
-			output "Minor release: ${Yellow}${minor}${Color_Off}"
-			if [ "$OS" = "x86_64" ]; then
-				output "Arch: ${Yellow}64-bit${Color_Off}"
-			else
-				output "Arch: ${Yellow}32-bit${Color_Off}"
-			fi
-		fi
+		fullname=$(cat /etc/redhat-release)
+		major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
+		ARCH=$(uname -m)
+		output "\n${Green}${fullname} ${ARCH}${Color_Off}"
+		setDNS
 		output "\n${Cyan}Disabling SELinux...${Color_Off}"
 		STATUS=$(getenforce)
 		if [ "$STATUS" = "disabled" ] || [ "$STATUS" = "Disabled" ]; then
@@ -182,40 +152,35 @@ else
 			output "${Green}SELinux successfully disabled!${Color_Off}\n"
 		fi
 		if [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			if [ -f "/etc/centos-release" ]; then
-				if echo "$fullname" | grep "CentOS Stream"; then
-					output "\n${Cyan}Updating installed packages...${Color_Off}"
-					yum clean all
-					yum install dnf -y
-					dnf update -y
-					output "${Green}Installed packages successfully updated!${Color_Off}\n"
-				else
+			if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
+				if ! grep -rnwq "/etc/redhat-release" -e "Stream"; then
 					output "${Cyan}Converting from CentOS Linux to CentOS Stream...${Color_Off}"
 					dnf --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos -y
 					dnf distro-sync -y
 					output "${Green}CentOS successfully converted!${Color_Off}\n"
 					output "${Cyan}Updating installed packages...${Color_Off}"
-					yum clean all
+					yum install dnf -y
+					dnf update -y
+					output "${Green}Installed packages successfully updated!${Color_Off}\n"
+				else
+					output "${Cyan}Updating installed packages...${Color_Off}"
 					yum install dnf -y
 					dnf update -y
 					output "${Green}Installed packages successfully updated!${Color_Off}\n"
 				fi
 			else
-				output "\n${Cyan}Updating installed packages...${Color_Off}"
-				yum clean all
+				output "${Cyan}Updating installed packages...${Color_Off}"
 				yum install dnf -y
 				dnf update -y
 				output "${Green}Installed packages successfully updated!${Color_Off}\n"
 			fi
 		elif [ "$major" = "7" ]; then
 			output "${Cyan}Updating installed packages...${Color_Off}"
-			yum clean all
 			yum install dnf -y
 			dnf update -y
 			output "${Green}Installed packages successfully updated!${Color_Off}\n"
 		else
 			output "${Cyan}Updating installed packages...${Color_Off}"
-			yum clean all
 			yum update -y
 			output "${Green}Installed packages successfully updated!${Color_Off}\n"
 		fi
@@ -229,8 +194,8 @@ else
 		wgetfile="/usr/bin/wget"
 		curlfile="/usr/bin/curl"
 		if [ ! -f "$wgetfile" ] || [ ! -f "$curlfile" ]; then
-			output "\n${Red}required packages failed to install!${Color_Off}"
-			output "${Red}Please check the server's internet connection and DNS settings and run the script again.${Color_Off}"
+			output "${Red}required packages failed to install!${Color_Off}"
+			output "Please check the server's internet connection and DNS settings and run the script again."
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
 			if [ "$rundns" != "5" ]; then
@@ -342,7 +307,7 @@ else
 		set +e
 		wget http://aweb.co/modules/addons/easyservice/Installer/timezonedb-2024.1.tgz -O timezonedb-2024.1.tgz
 		pear install -f timezonedb-2024.1.tgz
-		if ! grep -rnw "$PHPINI" -e "extension=timezonedb.so"; then
+		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 			echo "extension=timezonedb.so" >>"$PHPINI"
 		fi
 		set -e
@@ -379,10 +344,10 @@ else
 		sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
 		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
 		sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
-		sed -i -e 's/php_admin_flag[log_errors] = on/;php_admin_flag[log_errors] = on/g' /etc/php-fpm.d/www.conf
+		sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
 		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
 		restartApache
-		output "${Green}The ParsVT requirements have been set!${Color_Off}\n"
+		output "${Green}ParsVT requirements have been set!${Color_Off}\n"
 		if type mysql >/dev/null 2>&1; then
 			output "${Green}MySQL is already installed!${Color_Off}\n"
 		else
@@ -399,7 +364,7 @@ else
 		else
 			output "${Cyan}Installing Java libraries...${Color_Off}"
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-				if [ "$OS" = "x86_64" ]; then
+				if [ "$ARCH" = "x86_64" ]; then
 					dnf install http://files.aweb.asia/JAVA/jdk-8u411-linux-x64.rpm -y
 					dnf install http://files.aweb.asia/JAVA/jre-8u411-linux-x64.rpm -y
 				else
@@ -407,7 +372,7 @@ else
 					dnf install http://files.aweb.asia/JAVA/jre-8u411-linux-i586.rpm -y
 				fi
 			else
-				if [ "$OS" = "x86_64" ]; then
+				if [ "$ARCH" = "x86_64" ]; then
 					yum install http://files.aweb.asia/JAVA/jdk-8u411-linux-x64.rpm -y
 					yum install http://files.aweb.asia/JAVA/jre-8u411-linux-x64.rpm -y
 				else
@@ -425,7 +390,7 @@ else
 		cd /root
 		output "${Green}Permissions of directories and files successfully fixed!${Color_Off}\n"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			output "${Cyan}Opening the required firewall ports...${Color_Off}"
+			output "${Cyan}Opening required firewall ports...${Color_Off}"
 			systemctl enable firewalld
 			systemctl restart firewalld
 			firewall-cmd --zone=public --permanent --add-service=http
@@ -475,12 +440,12 @@ else
 			iptables -A INPUT -p tcp -m tcp --dport 10000 -j ACCEPT
 			service iptables save
 		fi
-		output "${Green}The required firewall ports successfully opened!${Color_Off}"
+		output "${Green}Required firewall ports successfully opened!${Color_Off}"
 		output "\n${Yellow} ___            __   _______              "
 		output "| _ \__ _ _ _ __\ \ / /_   _|__ ___ _ __  "
 		output "|  _/ _\` | '_(_-<\ V /  | |_/ _/ _ \ '  \ "
 		output "|_| \__,_|_| /__/ \_/   |_(_)__\___/_|_|_|${Color_Off}\n"
-		output "${Green}The ParsVT repair was successfully completed!${Color_Off}\n"
+		output "${Green}ParsVT repair successfully completed!${Color_Off}\n"
 	fi
 fi
 if [ "$rundns" != "5" ]; then
