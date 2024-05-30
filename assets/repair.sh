@@ -31,7 +31,7 @@ checkInternetConnection() {
 	else
 		echo -e "\n${Red}Internet connection is DOWN $(date +%Y-%m-%d_%H:%M:%S_%Z) $(($(date +%s) - $TIMESTAMP))${Color_Off}"
 		INTERNET_STATUS="DOWN"
-		output "Please check the server's internet connection and DNS settings and run the installer again."
+		output "Please check the server's internet connection and DNS settings and run the script again."
 		output "\n${Red}The operation aborted!${Color_Off}"
 		output "${Yellow}www.parsvt.com${Color_Off}\n"
 		exit
