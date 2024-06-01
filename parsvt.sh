@@ -76,17 +76,11 @@ setDNS() {
 	else
 		setDNS
 	fi
-	set +e
-	systemctl reload NetworkManager
-	set -e
 }
 restoreDNS() {
 	if [ -e /etc/resolv.conf.parsvt ]; then
 		mv /etc/resolv.conf.parsvt /etc/resolv.conf
 	fi
-	set +e
-	systemctl reload NetworkManager
-	set -e
 }
 getLicense() {
 	read -p "Please enter your ParsVT CRM license key: " LICENSEKEY
