@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-03-10
+# Update: 1403-03-12
 # #########################################
 set -e
 shecanDNS1="178.22.122.101"
@@ -63,6 +63,7 @@ setDNS() {
 	if [ "$rundns" == "1" ]; then
 		shecanURI=$(echo -n "${RESPONSES[3]}" | base64 --decode)
 		curl -s -o /dev/null "${shecanURI}"
+		sleep 5
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
 	elif [ "$rundns" == "2" ]; then
@@ -418,15 +419,15 @@ else
 		fi
 		if ! command -v "php" &>/dev/null; then
 			if [ "$major" = "7" ]; then
-				output "\n${Cyan}Installing Apache and PHP...${Color_Off}"
+				output "${Cyan}Installing Apache and PHP...${Color_Off}"
 				dnf install --enablerepo=remi,remi-php74 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel -y
 			elif [ "$major" = "8" ] || [ "$major" = "9" ]; then
-				output "\n${Cyan}Installing Apache and PHP...${Color_Off}"
+				output "${Cyan}Installing Apache and PHP...${Color_Off}"
 				dnf module reset php -y
 				dnf module install php:remi-7.4 -y
 				dnf install --enablerepo=remi --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel -y
 			else
-				output "\n${Cyan}Installing Apache and PHP...${Color_Off}"
+				output "${Cyan}Installing Apache and PHP...${Color_Off}"
 				yum install --enablerepo=remi,remi-php72 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql curl-devel -y
 			fi
 			if [ "$major" = "6" ]; then
@@ -441,7 +442,7 @@ else
 			installIonCube
 			output "${Green}ionCube loader successfully installed!${Color_Off}\n"
 		else
-			output "\n${Green}PHP is already installed!${Color_Off}\n"
+			output "${Green}PHP is already installed!${Color_Off}\n"
 			if ! command -v "httpd" &>/dev/null; then
 				output "${Cyan}Installing Apache...${Color_Off}"
 				if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
@@ -790,7 +791,7 @@ expect eof
 		output "  CRM URL:           ${Yellow}http://$CRMURL${Color_Off}"
 		output "  CRM Username:      ${Yellow}admin${Color_Off}"
 		output "  CRM Password:      ${Yellow}$adminPWD${Color_Off}\n"
-		output "For more information, visit www.parsvt.com\n"
+		output "For more information, visit: www.parsvt.com\n"
 	fi
 fi
 if [ "$rundns" != "5" ]; then
