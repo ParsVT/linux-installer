@@ -63,7 +63,6 @@ setDNS() {
 	if [ "$rundns" == "1" ]; then
 		shecanURI=$(echo -n "${RESPONSES[3]}" | base64 --decode)
 		curl -s -o /dev/null "${shecanURI}"
-		sleep 5
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
 	elif [ "$rundns" == "2" ]; then
@@ -77,11 +76,17 @@ setDNS() {
 	else
 		setDNS
 	fi
+	set +e
+	systemctl reload NetworkManager
+	set -e
 }
 restoreDNS() {
 	if [ -e /etc/resolv.conf.parsvt ]; then
 		mv /etc/resolv.conf.parsvt /etc/resolv.conf
 	fi
+	set +e
+	systemctl reload NetworkManager
+	set -e
 }
 getLicense() {
 	read -p "Please enter your ParsVT CRM license key: " LICENSEKEY
