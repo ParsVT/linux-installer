@@ -350,6 +350,9 @@ else
 		else
 			yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
 		fi
+		if [ "$major" = "9" ]; then
+			dnf install initscripts -y
+		fi
 		output "${Green}required packages successfully installed!${Color_Off}\n"
 		wgetfile="/usr/bin/wget"
 		curlfile="/usr/bin/curl"
