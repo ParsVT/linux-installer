@@ -73,7 +73,9 @@ getPHPConfigPath() {
 restartApache() {
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
 		systemctl restart httpd
+		set +e
 		systemctl restart php-fpm
+		set -e
 	else
 		service httpd restart
 	fi
@@ -189,6 +191,9 @@ else
 			dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
 		else
 			yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
+		fi
+		if [ "$major" = "9" ]; then
+			dnf install initscripts -y
 		fi
 		output "${Green}required packages successfully installed!${Color_Off}\n"
 		wgetfile="/usr/bin/wget"
