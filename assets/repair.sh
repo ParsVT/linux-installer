@@ -19,6 +19,7 @@ Yellow="\e[0;33m"
 Blue="\e[0;34m"
 Purple="\e[0;35m"
 Cyan="\e[0;36m"
+INTERNET_STATUS="DOWN"
 output() {
 	echo -e "$1"
 }
