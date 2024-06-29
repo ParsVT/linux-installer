@@ -35,6 +35,7 @@ LICENSEKEY=""
 app_dir=""
 adminPWD="123456789"
 mysqlPWD="123456789"
+INTERNET_STATUS="DOWN"
 output() {
 	echo -e "$1"
 }
