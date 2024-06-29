@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Repair Script
 # Developer: Mohammad Hadadpour
 # Release: 1402-11-28
-# Update: 1403-03-10
+# Update: 1403-04-09
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -26,10 +26,10 @@ checkInternetConnection() {
 	TIMESTAMP=$(date +%s)
 	ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1
 	if [ $? -eq 0 ]; then
-		echo -e "\n${Green}Internet connection is UP $(date +%Y-%m-%d_%H:%M:%S_%Z) $(($(date +%s) - $TIMESTAMP))${Color_Off}"
+		echo -e "\n${Green}Internet connection is UP - $(date +%Y-%m-%d_%H:%M:%S_%Z) - $(($(date +%s) - $TIMESTAMP))${Color_Off}"
 		INTERNET_STATUS="UP"
 	else
-		echo -e "\n${Red}Internet connection is DOWN $(date +%Y-%m-%d_%H:%M:%S_%Z) $(($(date +%s) - $TIMESTAMP))${Color_Off}"
+		echo -e "\n${Red}Internet connection is DOWN - $(date +%Y-%m-%d_%H:%M:%S_%Z) - $(($(date +%s) - $TIMESTAMP))${Color_Off}"
 		INTERNET_STATUS="DOWN"
 		output "Please check the server's internet connection and DNS settings and run the script again."
 		output "\n${Red}The operation aborted!${Color_Off}"
