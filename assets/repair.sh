@@ -154,6 +154,7 @@ else
 			sed -i -e 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
 			output "${Green}SELinux successfully disabled!${Color_Off}\n"
 		fi
+		set +e
 		if [ "$major" = "8" ] || [ "$major" = "9" ]; then
 			if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
 				if ! grep -rnwq "/etc/redhat-release" -e "Stream"; then
@@ -197,6 +198,7 @@ else
 			dnf install initscripts -y
 		fi
 		output "${Green}required packages successfully installed!${Color_Off}\n"
+		set -e
 		wgetfile="/usr/bin/wget"
 		curlfile="/usr/bin/curl"
 		if [ ! -f "$wgetfile" ] || [ ! -f "$curlfile" ]; then
@@ -209,6 +211,7 @@ else
 			fi
 			exit
 		fi
+		set +e
 		file="/etc/ntp.conf"
 		if [ ! -f "$file" ]; then
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
@@ -226,6 +229,7 @@ else
 				output "${Green}NTP successfully installed!${Color_Off}\n"
 			fi
 		fi
+		set -e
 		file="/etc/yum.repos.d/remi.repo"
 		if [ ! -f "$file" ]; then
 			output "${Red}Remi repository is not installed!${Color_Off}"
