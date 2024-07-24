@@ -3,15 +3,15 @@
 # Program: ParsVT CRM Repair Script
 # Developer: Mohammad Hadadpour
 # Release: 1402-11-28
-# Update: 1403-04-09
+# Update: 1403-05-03
 # #########################################
 set -e
-shecanDNS1="178.22.122.100"
-shecanDNS2="185.51.200.2"
 googleDNS1="8.8.8.8"
 googleDNS2="8.8.4.4"
 cloudflareDNS1="1.1.1.1"
 cloudflareDNS2="1.0.0.1"
+shecanDNS1="178.22.122.100"
+shecanDNS2="185.51.200.2"
 Color_Off="\e[0m"
 Red="\e[0;31m"
 Green="\e[0;32m"
@@ -40,20 +40,23 @@ checkInternetConnection() {
 }
 setDNS() {
 	echo -e "\nPlease enter the item number you want to use as DNS during repair:\n"
-	echo -e "[${Cyan}1${Color_Off}] Shecan (recommended)"
-	echo -e "[${Cyan}2${Color_Off}] Google"
-	echo -e "[${Cyan}3${Color_Off}] Cloudflare"
+	echo -e "[${Cyan}1${Color_Off}] Google"
+	echo -e "[${Cyan}2${Color_Off}] Cloudflare"
+	echo -e "[${Cyan}3${Color_Off}] Shecan"
 	echo -e "[${Yellow}4${Color_Off}] Continue without changing DNS\n"
 	read -p "Please select an item (1-4): " rundns
 	if [ "$rundns" == "1" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
+		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
+		sleep 3
 	elif [ "$rundns" == "2" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
+		echo -e "nameserver ${cloudflareDNS1}\nnameserver ${cloudflareDNS2}\n" >/etc/resolv.conf
+		sleep 3
 	elif [ "$rundns" == "3" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-		echo -e "nameserver ${cloudflareDNS1}\nnameserver ${cloudflareDNS2}\n" >/etc/resolv.conf
+		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
+		sleep 3
 	elif [ "$rundns" == "4" ]; then
 		echo -e "${Green}Done!${Color_Off}"
 	else
@@ -352,8 +355,10 @@ else
 		sed -i -e 's/session.cookie_httponly =/session.cookie_httponly = 1/g' $PHPINI
 		sed -i -e 's/session.cookie_secure = 1/;session.cookie_secure =/g' $PHPINI
 		sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
+		sed -i -e 's/;date.timezone =/date.timezone = Asia/Tehran/g' $PHPINI
 		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
 		sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
+		sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
 		sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
 		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
 		restartApache
