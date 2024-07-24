@@ -355,7 +355,7 @@ else
 		sed -i -e 's/session.cookie_httponly =/session.cookie_httponly = 1/g' $PHPINI
 		sed -i -e 's/session.cookie_secure = 1/;session.cookie_secure =/g' $PHPINI
 		sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
-		sed -i -e 's/;date.timezone =/date.timezone = Asia/Tehran/g' $PHPINI
+		sed -i -e 's/;date.timezone =/date.timezone = Asia\/Tehran/g' $PHPINI
 		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
 		sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
 		sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
