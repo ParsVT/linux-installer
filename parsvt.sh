@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-04-09
+# Update: 1403-05-03
 # #########################################
 set -e
 shecanDNS1="178.22.122.101"
@@ -66,12 +66,16 @@ setDNS() {
 		curl -s -o /dev/null "${shecanURI}"
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
+		curl -s -o /dev/null "${shecanURI}"
+		sleep 5
 	elif [ "$rundns" == "2" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
+		sleep 3
 	elif [ "$rundns" == "3" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${cloudflareDNS1}\nnameserver ${cloudflareDNS2}\n" >/etc/resolv.conf
+		sleep 3
 	elif [ "$rundns" == "4" ]; then
 		echo -e "${Green}Done!${Color_Off}"
 	else
@@ -384,6 +388,11 @@ else
 			file="/etc/yum.repos.d/remi.repo"
 			if [ ! -f "$file" ]; then
 				dnf install http://$primarySite/modules/addons/easyservice/Installer/epel-release-latest-$major.noarch.rpm -y
+				if [ "$major" = "9" ]; then
+					set +e
+					dnf install http://$primarySite/modules/addons/easyservice/Installer/epel-next-release-latest-$major.noarch.rpm -y
+					set -e
+				fi
 				dnf install http://$primarySite/modules/addons/easyservice/Installer/remi-release-$major.rpm -y
 			fi
 		else
@@ -397,9 +406,15 @@ else
 		if [ "$major" = "8" ]; then
 			dnf config-manager --set-enabled powertools
 			dnf --enablerepo=remi,powertools install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
+			set +e
+			dnf --enablerepo=remi,powertools install epel-next-release -y
+			set -e
 		elif [ "$major" = "9" ]; then
 			dnf config-manager --set-enabled crb
 			dnf --enablerepo=remi,crb install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
+			set +e
+			dnf --enablerepo=remi,crb install epel-next-release -y
+			set -e
 		else
 			yum --enablerepo=remi install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
 		fi
@@ -551,8 +566,10 @@ else
 		sed -i -e 's/session.cookie_httponly =/session.cookie_httponly = 1/g' $PHPINI
 		sed -i -e 's/session.cookie_secure = 1/;session.cookie_secure =/g' $PHPINI
 		sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
+		sed -i -e 's/;date.timezone =/date.timezone = Asia/Tehran/g' $PHPINI
 		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
 		sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
+		sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
 		sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
 		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
 		restartApache
@@ -711,10 +728,10 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.111-1.noarch.rpm -y
+			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.201-1.noarch.rpm -y
 			dnf install webmin -y
 		else
-			yum install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.111-1.noarch.rpm -y
+			yum install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.201-1.noarch.rpm -y
 			yum install webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
