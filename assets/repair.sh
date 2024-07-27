@@ -25,8 +25,10 @@ output() {
 }
 checkInternetConnection() {
 	TIMESTAMP=$(date +%s)
+	set +e
 	ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1
-	if [ $? -eq 0 ]; then
+	set -e
+	if [ $(($(date +%s) - $TIMESTAMP)) -eq 0 ]; then
 		echo -e "\n${Green}Internet connection is UP - $(date +%Y-%m-%d_%H:%M:%S_%Z) - $(($(date +%s) - $TIMESTAMP))${Color_Off}"
 		INTERNET_STATUS="UP"
 	else
