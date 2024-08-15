@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-05-03
+# Update: 1403-05-25
 # #########################################
 set -e
 shecanDNS1="178.22.122.101"
@@ -68,16 +68,22 @@ setDNS() {
 		curl -s -o /dev/null "${shecanURI}"
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
+		set +e
+		systemctl restart NetworkManager
+		set -e
 		curl -s -o /dev/null "${shecanURI}"
-		sleep 5
 	elif [ "$rundns" == "2" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
-		sleep 3
+		set +e
+		systemctl restart NetworkManager
+		set -e
 	elif [ "$rundns" == "3" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${cloudflareDNS1}\nnameserver ${cloudflareDNS2}\n" >/etc/resolv.conf
-		sleep 3
+		set +e
+		systemctl restart NetworkManager
+		set -e
 	elif [ "$rundns" == "4" ]; then
 		echo -e "${Green}Done!${Color_Off}"
 	else
@@ -87,6 +93,9 @@ setDNS() {
 restoreDNS() {
 	if [ -e /etc/resolv.conf.parsvt ]; then
 		mv /etc/resolv.conf.parsvt /etc/resolv.conf
+		set +e
+		systemctl restart NetworkManager
+		set -e
 	fi
 }
 getLicense() {
@@ -175,12 +184,12 @@ installIonCube() {
 	restartApache
 }
 mysqlConnection() {
-	read -p "Enter your MySQL hostname (just press enter to choose the default value $(tput bold)localhost$(tput sgr0)): " mysql_db_host
+	read -p "Enter your MySQL hostname (default: $(tput bold)localhost$(tput sgr0)): " mysql_db_host
 	DBHOST="${mysql_db_host:=localhost}"
-	read -p "Enter your MySQL username (just press enter to choose the default value $(tput bold)root$(tput sgr0)): " mysql_root_name
+	read -p "Enter your MySQL username (default: $(tput bold)root$(tput sgr0)): " mysql_root_name
 	DBUSER="${mysql_root_name:=root}"
 	read -p "Enter your MySQL password: " DBPassword
-	read -p "Enter your new MySQL database: " mysql_db_name
+	read -p "Enter your new MySQL database (default: $(tput bold)parsvt$(tput sgr0)): " mysql_db_name
 	DBNAME="${mysql_db_name:=parsvt}"
 	COMMAND="error_reporting(0); \$conn = new mysqli(\""$DBHOST"\", \""$DBUSER"\", \""$DBPassword"\"); if (\$conn->connect_error) { die(\"Connection failed: \" . \$conn->connect_error);} die(\"Connected\");"
 	mysqlresult=$(php -r "$COMMAND")
@@ -192,7 +201,7 @@ mysqlConnection() {
 		output "Database password: ${Yellow}${DBPassword}${Color_Off}"
 		output "Database name: ${Yellow}${DBNAME}${Color_Off}\n"
 		output "Setting up your new database..."
-		mysql -h ${DBHOST} -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "CREATE DATABASE IF NOT EXISTS ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_general_ci';"
+		mysql -h ${DBHOST} -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "CREATE DATABASE IF NOT EXISTS ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
 		output "${Green}Database successfully created!${Color_Off}\n"
 	else
 		output "${Red}$mysqlresult${Color_Off}"
@@ -489,7 +498,7 @@ else
 				rm -rf /root/IC.php*
 				if [ "$IONCUBE_VER" = "Ok" ]; then
 					output "Current ionCube loader version: ${Green}${IONCUBE_VERSION}${Color_Off}\n"
-					read -p "Enter the directory path of your application (it will be created if the directory does not exist) (Default: $(tput bold)${SETUPDIR}$(tput sgr0)): " app_dir
+					read -p "Enter the directory path of your application (default: $(tput bold)${SETUPDIR}$(tput sgr0)): " app_dir
 					SETUPDIR="/var/www/html/$app_dir"
 					SETUPDIR=$(string_replace "$SETUPDIR" "/")
 					SETUPDIR=$(string_replace "$SETUPDIR" "/")
@@ -581,7 +590,7 @@ else
 			mysqlConnection
 		else
 			removeMySQL
-			output "${Cyan}Installing MySQL (MariaDB)...${Color_Off}"
+			output "${Cyan}Installing MySQL/MariaDB...${Color_Off}"
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
 				dnf install --enablerepo=remi --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
 			else
@@ -648,10 +657,10 @@ expect eof
 			echo "$SECURE_MYSQL"
 			wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
 			restartDatabase
-			output "${Green}MySQL (MariaDB) successfully installed!${Color_Off}\n"
+			output "${Green}MySQL/MariaDB successfully installed!${Color_Off}\n"
 			output "${Cyan}Creating database...${Color_Off}"
-			mysql -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "CREATE DATABASE IF NOT EXISTS ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_general_ci';"
-			mysql -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "ALTER DATABASE ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_general_ci';"
+			mysql -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "CREATE DATABASE IF NOT EXISTS ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
+			mysql -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "ALTER DATABASE ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
 			output "${Green}Database successfully created!${Color_Off}\n"
 		fi
 		restartDatabase
