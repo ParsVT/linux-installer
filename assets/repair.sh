@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Repair Script
 # Developer: Mohammad Hadadpour
 # Release: 1402-11-28
-# Update: 1403-05-03
+# Update: 1403-05-25
 # #########################################
 set -e
 googleDNS1="8.8.8.8"
@@ -50,15 +50,21 @@ setDNS() {
 	if [ "$rundns" == "1" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
-		sleep 3
+		set +e
+		systemctl restart NetworkManager
+		set -e
 	elif [ "$rundns" == "2" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${cloudflareDNS1}\nnameserver ${cloudflareDNS2}\n" >/etc/resolv.conf
-		sleep 3
+		set +e
+		systemctl restart NetworkManager
+		set -e
 	elif [ "$rundns" == "3" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
-		sleep 3
+		set +e
+		systemctl restart NetworkManager
+		set -e
 	elif [ "$rundns" == "4" ]; then
 		echo -e "${Green}Done!${Color_Off}"
 	else
@@ -68,6 +74,9 @@ setDNS() {
 restoreDNS() {
 	if [ -e /etc/resolv.conf.parsvt ]; then
 		mv /etc/resolv.conf.parsvt /etc/resolv.conf
+		set +e
+		systemctl restart NetworkManager
+		set -e
 	fi
 }
 getPHPConfigPath() {
