@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-06-01
+# Update: 1403-06-03
 # #########################################
 set -e
 shecanDNS1="178.22.122.101"
@@ -36,7 +36,7 @@ app_dir=""
 adminPWD="123456789"
 mysqlPWD="123456789"
 INTERNET_STATUS="DOWN"
-installType="Install"
+installationType="Install"
 output() {
 	echo -e "$1"
 }
@@ -48,11 +48,11 @@ startInstallation() {
 	echo -e "[${Yellow}4${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
 	read -p "Please select an action (1-4): " run
 	if [ "$run" == "1" ]; then
-		installType="Install"
+		installationType="Install"
 	elif [ "$run" == "2" ]; then
-		installType="Repair"
+		installationType="Repair"
 	elif [ "$run" == "3" ]; then
-		installType="ionCube"
+		installationType="ionCube"
 	elif [ "$run" == "4" ]; then
 		echo -e "\n${Red}The operation aborted!${Color_Off}"
 		echo -e "${Yellow}www.parsvt.com${Color_Off}\n"
@@ -169,6 +169,84 @@ restartDatabase() {
 		service mariadb restart
 	fi
 }
+disableSELinux() {
+	output "\n${Cyan}Disabling SELinux...${Color_Off}"
+	STATUS=$(getenforce)
+	if [ "$STATUS" = "disabled" ] || [ "$STATUS" = "Disabled" ]; then
+		output "${Green}SELinux is already disabled!${Color_Off}\n"
+	else
+		setenforce 0
+		sed -i -e 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+		sed -i -e 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
+		output "${Green}SELinux successfully disabled!${Color_Off}\n"
+	fi
+}
+updatePackage() {
+	if [ "$major" = "8" ] || [ "$major" = "9" ]; then
+		if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
+			if ! grep -rnwq "/etc/redhat-release" -e "Stream"; then
+				output "${Cyan}Converting from CentOS Linux to CentOS Stream...${Color_Off}"
+				dnf --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos -y
+				dnf distro-sync -y
+				output "${Green}CentOS successfully converted!${Color_Off}\n"
+				output "${Cyan}Updating installed packages...${Color_Off}"
+				yum install dnf -y
+				dnf update -y
+				output "${Green}Installed packages successfully updated!${Color_Off}\n"
+			else
+				output "${Cyan}Updating installed packages...${Color_Off}"
+				yum install dnf -y
+				dnf update -y
+				output "${Green}Installed packages successfully updated!${Color_Off}\n"
+			fi
+		else
+			output "${Cyan}Updating installed packages...${Color_Off}"
+			yum install dnf -y
+			dnf update -y
+			output "${Green}Installed packages successfully updated!${Color_Off}\n"
+		fi
+	elif [ "$major" = "7" ]; then
+		output "${Cyan}Updating installed packages...${Color_Off}"
+		yum install dnf -y
+		dnf update -y
+		output "${Green}Installed packages successfully updated!${Color_Off}\n"
+	else
+		output "${Cyan}Updating installed packages...${Color_Off}"
+		yum update -y
+		output "${Green}Installed packages successfully updated!${Color_Off}\n"
+	fi
+}
+installPackage() {
+	output "${Cyan}Installing required packages...${Color_Off}"
+	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+		dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
+	else
+		yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
+	fi
+	if [ "$major" = "9" ]; then
+		dnf install initscripts -y
+	fi
+	output "${Green}required packages successfully installed!${Color_Off}\n"
+}
+installNTP() {
+	file="/etc/ntp.conf"
+	if [ ! -f "$file" ]; then
+		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+			output "${Cyan}Installing Chrony...${Color_Off}"
+			dnf install chrony -y
+			systemctl start chronyd
+			systemctl enable chronyd
+			output "${Green}Chrony successfully installed!${Color_Off}\n"
+		else
+			output "${Cyan}Installing NTP...${Color_Off}"
+			yum install ntp ntpdate ntp-doc -y
+			ntpdate pool.ntp.org
+			systemctl start ntpd
+			systemctl enable ntpd
+			output "${Green}NTP successfully installed!${Color_Off}\n"
+		fi
+	fi
+}
 installIonCube() {
 	cd /tmp
 	rm -rf ioncube_loaders_lin*.tar.gz*
@@ -191,6 +269,85 @@ installIonCube() {
 	rm -rf ioncube_loaders_lin*.tar.gz*
 	cd /root
 	restartApache
+}
+installJava() {
+	if java -version 2>&1 >/dev/null | grep -q "java version"; then
+		output "${Green}Java libraries are already installed!${Color_Off}\n"
+	else
+		output "${Cyan}Installing Java libraries...${Color_Off}"
+		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+			if [ "$ARCH" = "x86_64" ]; then
+				dnf install http://$secondarySite/JAVA/jdk-8u421-linux-x64.rpm -y
+				dnf install http://$secondarySite/JAVA/jre-8u421-linux-x64.rpm -y
+			else
+				dnf install http://$secondarySite/JAVA/jdk-8u421-linux-i586.rpm -y
+				dnf install http://$secondarySite/JAVA/jre-8u421-linux-i586.rpm -y
+			fi
+		else
+			if [ "$ARCH" = "x86_64" ]; then
+				yum install http://$secondarySite/JAVA/jdk-8u421-linux-x64.rpm -y
+				yum install http://$secondarySite/JAVA/jre-8u421-linux-x64.rpm -y
+			else
+				yum install http://$secondarySite/JAVA/jdk-8u421-linux-i586.rpm -y
+				yum install http://$secondarySite/JAVA/jre-8u421-linux-i586.rpm -y
+			fi
+		fi
+		output "${Green}Java libraries successfully installed!${Color_Off}\n"
+	fi
+}
+openPorts() {
+	output "${Cyan}Opening required firewall ports...${Color_Off}"
+	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+		systemctl enable firewalld
+		systemctl restart firewalld
+		firewall-cmd --zone=public --permanent --add-service=http
+		firewall-cmd --zone=public --permanent --add-service=https
+		firewall-cmd --zone=public --permanent --add-service=imaps
+		firewall-cmd --zone=public --permanent --add-service=ssh
+		firewall-cmd --zone=public --permanent --add-service=smtp
+		firewall-cmd --zone=public --permanent --add-port=80/tcp
+		firewall-cmd --zone=public --permanent --add-port=443/tcp
+		firewall-cmd --zone=public --permanent --add-port=143/tcp
+		firewall-cmd --zone=public --permanent --add-port=993/tcp
+		firewall-cmd --zone=public --permanent --add-port=110/tcp
+		firewall-cmd --zone=public --permanent --add-port=995/tcp
+		firewall-cmd --zone=public --permanent --add-port=22/tcp
+		firewall-cmd --zone=public --permanent --add-port=25/tcp
+		firewall-cmd --zone=public --permanent --add-port=2525/tcp
+		firewall-cmd --zone=public --permanent --add-port=587/tcp
+		firewall-cmd --zone=public --permanent --add-port=465/tcp
+		firewall-cmd --zone=public --permanent --add-port=3306/tcp
+		firewall-cmd --zone=public --permanent --add-port=5038/tcp
+		firewall-cmd --zone=public --permanent --add-port=9999/tcp
+		firewall-cmd --zone=public --permanent --add-port=7777/tcp
+		firewall-cmd --zone=public --permanent --add-port=2222/tcp
+		firewall-cmd --zone=public --permanent --add-port=8080/tcp
+		firewall-cmd --zone=public --permanent --add-port=8081/tcp
+		firewall-cmd --zone=public --permanent --add-port=10000/tcp
+		firewall-cmd --reload
+	else
+		iptables -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 143 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 993 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 110 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 995 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 25 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 2525 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 587 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 465 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 3306 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 5038 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 9999 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 7777 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 2222 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 8080 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 8081 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 10000 -j ACCEPT
+		service iptables save
+	fi
+	output "${Green}Required firewall ports successfully opened!${Color_Off}"
 }
 mysqlConnection() {
 	read -p "Enter your MySQL hostname (default: $(tput bold)localhost$(tput sgr0)): " mysql_db_host
@@ -229,7 +386,7 @@ echo -e "Shell script to install ParsVT CRM on Linux."
 echo -e "Please run as root. if you are not, enter '4' now and enter 'sudo su' before running the script.${Color_Off}"
 startInstallation
 restoreDNS
-if [ "$installType" = "Install" ]; then
+if [ "$installationType" = "Install" ]; then
 	if [ -e /var/www/html/config.inc.php ]; then
 		output "\n${Red}VtigerCRM already exists!${Color_Off}"
 		output "Press Ctrl+C within the next 10 seconds to cancel the installation."
@@ -301,59 +458,9 @@ if [ "$installType" = "Install" ]; then
 		fi
 		output "\n${Green}${LICENSEKEY}${Color_Off} will be used as the license key."
 		setDNS
-		output "\n${Cyan}Disabling SELinux...${Color_Off}"
-		STATUS=$(getenforce)
-		if [ "$STATUS" = "disabled" ] || [ "$STATUS" = "Disabled" ]; then
-			output "${Green}SELinux is already disabled!${Color_Off}\n"
-		else
-			setenforce 0
-			sed -i -e 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
-			sed -i -e 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
-			output "${Green}SELinux successfully disabled!${Color_Off}\n"
-		fi
-		if [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
-				if ! grep -rnwq "/etc/redhat-release" -e "Stream"; then
-					output "${Cyan}Converting from CentOS Linux to CentOS Stream...${Color_Off}"
-					dnf --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos -y
-					dnf distro-sync -y
-					output "${Green}CentOS successfully converted!${Color_Off}\n"
-					output "${Cyan}Updating installed packages...${Color_Off}"
-					yum install dnf -y
-					dnf update -y
-					output "${Green}Installed packages successfully updated!${Color_Off}\n"
-				else
-					output "${Cyan}Updating installed packages...${Color_Off}"
-					yum install dnf -y
-					dnf update -y
-					output "${Green}Installed packages successfully updated!${Color_Off}\n"
-				fi
-			else
-				output "${Cyan}Updating installed packages...${Color_Off}"
-				yum install dnf -y
-				dnf update -y
-				output "${Green}Installed packages successfully updated!${Color_Off}\n"
-			fi
-		elif [ "$major" = "7" ]; then
-			output "${Cyan}Updating installed packages...${Color_Off}"
-			yum install dnf -y
-			dnf update -y
-			output "${Green}Installed packages successfully updated!${Color_Off}\n"
-		else
-			output "${Cyan}Updating installed packages...${Color_Off}"
-			yum update -y
-			output "${Green}Installed packages successfully updated!${Color_Off}\n"
-		fi
-		output "${Cyan}Installing required packages...${Color_Off}"
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
-		else
-			yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
-		fi
-		if [ "$major" = "9" ]; then
-			dnf install initscripts -y
-		fi
-		output "${Green}required packages successfully installed!${Color_Off}\n"
+		disableSELinux
+		updatePackage
+		installPackage
 		wgetfile="/usr/bin/wget"
 		curlfile="/usr/bin/curl"
 		if [ ! -f "$wgetfile" ] || [ ! -f "$curlfile" ]; then
@@ -366,23 +473,7 @@ if [ "$installType" = "Install" ]; then
 			fi
 			exit
 		fi
-		file="/etc/ntp.conf"
-		if [ ! -f "$file" ]; then
-			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-				output "${Cyan}Installing Chrony...${Color_Off}"
-				dnf install chrony -y
-				systemctl start chronyd
-				systemctl enable chronyd
-				output "${Green}Chrony successfully installed!${Color_Off}\n"
-			else
-				output "${Cyan}Installing NTP...${Color_Off}"
-				yum install ntp ntpdate ntp-doc -y
-				ntpdate pool.ntp.org
-				systemctl start ntpd
-				systemctl enable ntpd
-				output "${Green}NTP successfully installed!${Color_Off}\n"
-			fi
-		fi
+		installNTP
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
 			output "${Cyan}Installing Remi repository...${Color_Off}"
 			file="/etc/yum.repos.d/remi.repo"
@@ -695,29 +786,7 @@ expect eof
 		rm -rf $SETUPDIR/_install*
 		rm -rf $SETUPDIR/_extensions*
 		output "${Green}ParsVT CRM package successfully installed!${Color_Off}\n"
-		if java -version 2>&1 >/dev/null | grep -q "java version"; then
-			output "${Green}Java libraries are already installed!${Color_Off}\n"
-		else
-			output "${Cyan}Installing Java libraries...${Color_Off}"
-			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-				if [ "$ARCH" = "x86_64" ]; then
-					dnf install http://$secondarySite/JAVA/jdk-8u411-linux-x64.rpm -y
-					dnf install http://$secondarySite/JAVA/jre-8u411-linux-x64.rpm -y
-				else
-					dnf install http://$secondarySite/JAVA/jdk-8u411-linux-i586.rpm -y
-					dnf install http://$secondarySite/JAVA/jre-8u411-linux-i586.rpm -y
-				fi
-			else
-				if [ "$ARCH" = "x86_64" ]; then
-					yum install http://$secondarySite/JAVA/jdk-8u411-linux-x64.rpm -y
-					yum install http://$secondarySite/JAVA/jre-8u411-linux-x64.rpm -y
-				else
-					yum install http://$secondarySite/JAVA/jdk-8u411-linux-i586.rpm -y
-					yum install http://$secondarySite/JAVA/jre-8u411-linux-i586.rpm -y
-				fi
-			fi
-			output "${Green}Java libraries successfully installed!${Color_Off}\n"
-		fi
+		installJava
 		output "${Cyan}Setting backup directory...${Color_Off}"
 		output "#!/bin/bash\n delfile=\$(date --date='-7 day' +'%Y-%d-%m')\n yest=\$(date --date='today' +'%Y-%d-%m')\n backupdirectory='$SETUPDIR2'\n storagedirectory='$backupdirectory'\n mysqldump --user=$DBUSER --password=$DBPassword --host=$DBHOST $DBNAME | gzip -c > \$storagedirectory/$DBNAME-\$yest.sql.gz\n tar -czf \$storagedirectory/$DBNAME-\$yest.tar.gz \$backupdirectory\n rm -rf \$storagedirectory/$DBNAME-\$delfile.sql.gz*\n rm -rf \$storagedirectory/$DBNAME-\$delfile.tar.gz*" >/home/backup-$DBNAME.sh
 		if [ ! -d $backupdirectory ]; then
@@ -735,58 +804,7 @@ expect eof
 			yum install webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			output "${Cyan}Opening required firewall ports...${Color_Off}"
-			systemctl enable firewalld
-			systemctl restart firewalld
-			firewall-cmd --zone=public --permanent --add-service=http
-			firewall-cmd --zone=public --permanent --add-service=https
-			firewall-cmd --zone=public --permanent --add-service=imaps
-			firewall-cmd --zone=public --permanent --add-service=ssh
-			firewall-cmd --zone=public --permanent --add-service=smtp
-			firewall-cmd --zone=public --permanent --add-port=80/tcp
-			firewall-cmd --zone=public --permanent --add-port=443/tcp
-			firewall-cmd --zone=public --permanent --add-port=143/tcp
-			firewall-cmd --zone=public --permanent --add-port=993/tcp
-			firewall-cmd --zone=public --permanent --add-port=110/tcp
-			firewall-cmd --zone=public --permanent --add-port=995/tcp
-			firewall-cmd --zone=public --permanent --add-port=22/tcp
-			firewall-cmd --zone=public --permanent --add-port=25/tcp
-			firewall-cmd --zone=public --permanent --add-port=2525/tcp
-			firewall-cmd --zone=public --permanent --add-port=587/tcp
-			firewall-cmd --zone=public --permanent --add-port=465/tcp
-			firewall-cmd --zone=public --permanent --add-port=3306/tcp
-			firewall-cmd --zone=public --permanent --add-port=5038/tcp
-			firewall-cmd --zone=public --permanent --add-port=9999/tcp
-			firewall-cmd --zone=public --permanent --add-port=7777/tcp
-			firewall-cmd --zone=public --permanent --add-port=2222/tcp
-			firewall-cmd --zone=public --permanent --add-port=8080/tcp
-			firewall-cmd --zone=public --permanent --add-port=8081/tcp
-			firewall-cmd --zone=public --permanent --add-port=10000/tcp
-			firewall-cmd --reload
-		else
-			iptables -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 143 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 993 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 110 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 995 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 25 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 2525 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 587 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 465 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 3306 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 5038 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 9999 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 7777 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 2222 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 8080 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 8081 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 10000 -j ACCEPT
-			service iptables save
-		fi
-		output "${Green}Required firewall ports successfully opened!${Color_Off}"
+		openPorts
 		output "\n${Yellow} ___            __   _______              "
 		output "| _ \__ _ _ _ __\ \ / /_   _|__ ___ _ __  "
 		output "|  _/ _\` | '_(_-<\ V /  | |_/ _/ _ \ '  \ "
@@ -812,7 +830,7 @@ fi
 if [ "$rundns" != "5" ]; then
 	restoreDNS
 fi
-if [ "$installType" = "Repair" ]; then
+if [ "$installationType" = "Repair" ]; then
 	if [ ! -f "/var/www/html/config.inc.php" ]; then
 		output "\n${Red}VtigerCRM is not installed!${Color_Off}"
 		output "\n${Red}The operation aborted!${Color_Off}"
@@ -831,60 +849,10 @@ if [ "$installType" = "Repair" ]; then
 		major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
 		ARCH=$(uname -m)
 		output "\n${Green}${fullname} ${ARCH}${Color_Off}"
-		output "\n${Cyan}Disabling SELinux...${Color_Off}"
-		STATUS=$(getenforce)
-		if [ "$STATUS" = "disabled" ] || [ "$STATUS" = "Disabled" ]; then
-			output "${Green}SELinux is already disabled!${Color_Off}\n"
-		else
-			setenforce 0
-			sed -i -e 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
-			sed -i -e 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
-			output "${Green}SELinux successfully disabled!${Color_Off}\n"
-		fi
+		disableSELinux
 		set +e
-		if [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
-				if ! grep -rnwq "/etc/redhat-release" -e "Stream"; then
-					output "${Cyan}Converting from CentOS Linux to CentOS Stream...${Color_Off}"
-					dnf --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos -y
-					dnf distro-sync -y
-					output "${Green}CentOS successfully converted!${Color_Off}\n"
-					output "${Cyan}Updating installed packages...${Color_Off}"
-					yum install dnf -y
-					dnf update -y
-					output "${Green}Installed packages successfully updated!${Color_Off}\n"
-				else
-					output "${Cyan}Updating installed packages...${Color_Off}"
-					yum install dnf -y
-					dnf update -y
-					output "${Green}Installed packages successfully updated!${Color_Off}\n"
-				fi
-			else
-				output "${Cyan}Updating installed packages...${Color_Off}"
-				yum install dnf -y
-				dnf update -y
-				output "${Green}Installed packages successfully updated!${Color_Off}\n"
-			fi
-		elif [ "$major" = "7" ]; then
-			output "${Cyan}Updating installed packages...${Color_Off}"
-			yum install dnf -y
-			dnf update -y
-			output "${Green}Installed packages successfully updated!${Color_Off}\n"
-		else
-			output "${Cyan}Updating installed packages...${Color_Off}"
-			yum update -y
-			output "${Green}Installed packages successfully updated!${Color_Off}\n"
-		fi
-		output "${Cyan}Installing required packages...${Color_Off}"
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
-		else
-			yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
-		fi
-		if [ "$major" = "9" ]; then
-			dnf install initscripts -y
-		fi
-		output "${Green}required packages successfully installed!${Color_Off}\n"
+		updatePackage
+		installPackage
 		set -e
 		wgetfile="/usr/bin/wget"
 		curlfile="/usr/bin/curl"
@@ -896,23 +864,7 @@ if [ "$installType" = "Repair" ]; then
 			exit
 		fi
 		set +e
-		file="/etc/ntp.conf"
-		if [ ! -f "$file" ]; then
-			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-				output "${Cyan}Installing Chrony...${Color_Off}"
-				dnf install chrony -y
-				systemctl start chronyd
-				systemctl enable chronyd
-				output "${Green}Chrony successfully installed!${Color_Off}\n"
-			else
-				output "${Cyan}Installing NTP...${Color_Off}"
-				yum install ntp ntpdate ntp-doc -y
-				ntpdate pool.ntp.org
-				systemctl start ntpd
-				systemctl enable ntpd
-				output "${Green}NTP successfully installed!${Color_Off}\n"
-			fi
-		fi
+		installNTP
 		set -e
 		file="/etc/yum.repos.d/remi.repo"
 		if [ ! -f "$file" ]; then
@@ -1039,29 +991,7 @@ if [ "$installType" = "Repair" ]; then
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
 			exit
 		fi
-		if java -version 2>&1 >/dev/null | grep -q "java version"; then
-			output "${Green}Java libraries are already installed!${Color_Off}\n"
-		else
-			output "${Cyan}Installing Java libraries...${Color_Off}"
-			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-				if [ "$ARCH" = "x86_64" ]; then
-					dnf install http://$secondarySite/JAVA/jdk-8u411-linux-x64.rpm -y
-					dnf install http://$secondarySite/JAVA/jre-8u411-linux-x64.rpm -y
-				else
-					dnf install http://$secondarySite/JAVA/jdk-8u411-linux-i586.rpm -y
-					dnf install http://$secondarySite/JAVA/jre-8u411-linux-i586.rpm -y
-				fi
-			else
-				if [ "$ARCH" = "x86_64" ]; then
-					yum install http://$secondarySite/JAVA/jdk-8u411-linux-x64.rpm -y
-					yum install http://$secondarySite/JAVA/jre-8u411-linux-x64.rpm -y
-				else
-					yum install http://$secondarySite/JAVA/jdk-8u411-linux-i586.rpm -y
-					yum install http://$secondarySite/JAVA/jre-8u411-linux-i586.rpm -y
-				fi
-			fi
-			output "${Green}Java libraries successfully installed!${Color_Off}\n"
-		fi
+		installJava
 		output "${Cyan}Fixing permissions of directories and files...${Color_Off}"
 		chown -R apache:apache /var/www/html
 		cd /var/www/html
@@ -1069,58 +999,7 @@ if [ "$installType" = "Repair" ]; then
 		find -type f -exec chmod 644 {} \;
 		cd /root
 		output "${Green}Permissions of directories and files successfully fixed!${Color_Off}\n"
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			output "${Cyan}Opening required firewall ports...${Color_Off}"
-			systemctl enable firewalld
-			systemctl restart firewalld
-			firewall-cmd --zone=public --permanent --add-service=http
-			firewall-cmd --zone=public --permanent --add-service=https
-			firewall-cmd --zone=public --permanent --add-service=imaps
-			firewall-cmd --zone=public --permanent --add-service=ssh
-			firewall-cmd --zone=public --permanent --add-service=smtp
-			firewall-cmd --zone=public --permanent --add-port=80/tcp
-			firewall-cmd --zone=public --permanent --add-port=443/tcp
-			firewall-cmd --zone=public --permanent --add-port=143/tcp
-			firewall-cmd --zone=public --permanent --add-port=993/tcp
-			firewall-cmd --zone=public --permanent --add-port=110/tcp
-			firewall-cmd --zone=public --permanent --add-port=995/tcp
-			firewall-cmd --zone=public --permanent --add-port=22/tcp
-			firewall-cmd --zone=public --permanent --add-port=25/tcp
-			firewall-cmd --zone=public --permanent --add-port=2525/tcp
-			firewall-cmd --zone=public --permanent --add-port=587/tcp
-			firewall-cmd --zone=public --permanent --add-port=465/tcp
-			firewall-cmd --zone=public --permanent --add-port=3306/tcp
-			firewall-cmd --zone=public --permanent --add-port=5038/tcp
-			firewall-cmd --zone=public --permanent --add-port=9999/tcp
-			firewall-cmd --zone=public --permanent --add-port=7777/tcp
-			firewall-cmd --zone=public --permanent --add-port=2222/tcp
-			firewall-cmd --zone=public --permanent --add-port=8080/tcp
-			firewall-cmd --zone=public --permanent --add-port=8081/tcp
-			firewall-cmd --zone=public --permanent --add-port=10000/tcp
-			firewall-cmd --reload
-		else
-			iptables -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 143 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 993 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 110 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 995 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 25 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 2525 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 587 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 465 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 3306 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 5038 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 9999 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 7777 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 2222 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 8080 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 8081 -j ACCEPT
-			iptables -A INPUT -p tcp -m tcp --dport 10000 -j ACCEPT
-			service iptables save
-		fi
-		output "${Green}Required firewall ports successfully opened!${Color_Off}"
+		openPorts
 		output "\n${Yellow} ___            __   _______              "
 		output "| _ \__ _ _ _ __\ \ / /_   _|__ ___ _ __  "
 		output "|  _/ _\` | '_(_-<\ V /  | |_/ _/ _ \ '  \ "
@@ -1128,7 +1007,7 @@ if [ "$installType" = "Repair" ]; then
 		output "${Green}ParsVT repair successfully completed!${Color_Off}\n"
 	fi
 fi
-if [ "$installType" = "ionCube" ]; then
+if [ "$installationType" = "ionCube" ]; then
 checkInternetConnection
 	if [ ! -f "/etc/redhat-release" ]; then
 		output "\n${Red}Operating system is not supported!${Color_Off}"
