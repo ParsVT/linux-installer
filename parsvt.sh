@@ -1008,7 +1008,7 @@ if [ "$installationType" = "Repair" ]; then
 	fi
 fi
 if [ "$installationType" = "ionCube" ]; then
-checkInternetConnection
+	checkInternetConnection
 	if [ ! -f "/etc/redhat-release" ]; then
 		output "\n${Red}Operating system is not supported!${Color_Off}"
 		output "ionCube loader installer only installs on CentOS and RHEL-based Linuxes."
