@@ -181,14 +181,14 @@ disableSELinux() {
 		setenforce 0
 		sed -i -e 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 		sed -i -e 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
-		output "${Green}SELinux successfully disabled!${Color_Off}\n"
+		output "${Green}SELinux successfully disabled!${Color_Off}"
 	fi
 }
 updatePackage() {
 	if [ "$major" = "8" ] || [ "$major" = "9" ]; then
 		if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
 			if ! grep -rnwq "/etc/redhat-release" -e "Stream"; then
-				output "${Cyan}Converting from CentOS Linux to CentOS Stream...${Color_Off}"
+				output "\n${Cyan}Converting from CentOS Linux to CentOS Stream...${Color_Off}"
 				dnf --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos -y
 				dnf distro-sync -y
 				output "${Green}CentOS successfully converted!${Color_Off}\n"
@@ -197,24 +197,24 @@ updatePackage() {
 				dnf update -y
 				output "${Green}Installed packages successfully updated!${Color_Off}\n"
 			else
-				output "${Cyan}Updating installed packages...${Color_Off}"
+				output "\n${Cyan}Updating installed packages...${Color_Off}"
 				yum install dnf -y
 				dnf update -y
 				output "${Green}Installed packages successfully updated!${Color_Off}\n"
 			fi
 		else
-			output "${Cyan}Updating installed packages...${Color_Off}"
+			output "\n${Cyan}Updating installed packages...${Color_Off}"
 			yum install dnf -y
 			dnf update -y
 			output "${Green}Installed packages successfully updated!${Color_Off}\n"
 		fi
 	elif [ "$major" = "7" ]; then
-		output "${Cyan}Updating installed packages...${Color_Off}"
+		output "\n${Cyan}Updating installed packages...${Color_Off}"
 		yum install dnf -y
 		dnf update -y
 		output "${Green}Installed packages successfully updated!${Color_Off}\n"
 	else
-		output "${Cyan}Updating installed packages...${Color_Off}"
+		output "\n${Cyan}Updating installed packages...${Color_Off}"
 		yum update -y
 		output "${Green}Installed packages successfully updated!${Color_Off}\n"
 	fi
