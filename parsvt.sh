@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-06-03
+# Update: 1403-06-05
 # #########################################
 set -e
 shecanDNS1="178.22.122.101"
@@ -45,8 +45,9 @@ startInstallation() {
 	echo -e "[${Cyan}1${Color_Off}] ${Cyan}Install ParsVT CRM${Color_Off}"
 	echo -e "[${Cyan}2${Color_Off}] ${Cyan}Repair server configs${Color_Off}"
 	echo -e "[${Cyan}3${Color_Off}] ${Cyan}Update ionCube loader${Color_Off}"
-	echo -e "[${Yellow}4${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
-	read -p "Please select an action (1-4): " run
+	echo -e "[${Cyan}4${Color_Off}] ${Cyan}Install ClamAV (Antivirus)${Color_Off}"
+	echo -e "[${Yellow}5${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
+	read -p "Please select an action (1-5): " run
 	if [ "$run" == "1" ]; then
 		installationType="Install"
 	elif [ "$run" == "2" ]; then
@@ -54,6 +55,8 @@ startInstallation() {
 	elif [ "$run" == "3" ]; then
 		installationType="ionCube"
 	elif [ "$run" == "4" ]; then
+		installationType="clamAV"
+	elif [ "$run" == "5" ]; then
 		echo -e "\n${Red}The operation aborted!${Color_Off}"
 		echo -e "${Yellow}www.parsvt.com${Color_Off}\n"
 		exit
@@ -226,7 +229,7 @@ installPackage() {
 	if [ "$major" = "9" ]; then
 		dnf install initscripts -y
 	fi
-	output "${Green}required packages successfully installed!${Color_Off}\n"
+	output "${Green}Required packages successfully installed!${Color_Off}\n"
 }
 installNTP() {
 	file="/etc/ntp.conf"
@@ -383,7 +386,7 @@ echo -e "██████  ███████ ██████  ███
 echo -e "██      ██   ██ ██   ██      ██  ██  ██     ██   "
 echo -e "██      ██   ██ ██   ██ ███████   ████      ██   \n"
 echo -e "Shell script to install ParsVT CRM on Linux."
-echo -e "Please run as root. if you are not, enter '4' now and enter 'sudo su' before running the script.${Color_Off}"
+echo -e "Please run as root. if you are not, enter '5' now and enter 'sudo su' before running the script.${Color_Off}"
 startInstallation
 restoreDNS
 if [ "$installationType" = "Install" ]; then
@@ -1024,9 +1027,7 @@ if [ "$installationType" = "ionCube" ]; then
 			output "\n${Green}${fullname} ${ARCH}${Color_Off}"
 		fi
 		set +e
-		output "\n${Cyan}Installing required packages...${Color_Off}"
-		yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
-		output "${Green}required packages successfully installed!${Color_Off}\n"
+		installPackage
 		set -e
 		wgetfile="/usr/bin/wget"
 		curlfile="/usr/bin/curl"
@@ -1085,5 +1086,55 @@ if [ "$installationType" = "ionCube" ]; then
 				exit
 			fi
 		fi
+	fi
+fi
+if [ "$installationType" = "clamAV" ]; then
+	checkInternetConnection
+	if [ ! -f "/etc/redhat-release" ]; then
+		output "\n${Red}Operating system is not supported!${Color_Off}"
+		output "ionCube loader installer only installs on CentOS and RHEL-based Linuxes."
+		output "You have to install/update ionCube loader manually."
+		output "\n${Red}The operation aborted!${Color_Off}"
+		output "${Yellow}www.parsvt.com${Color_Off}\n"
+		exit
+	else
+		if [ -f "/etc/redhat-release" ]; then
+			fullname=$(cat /etc/redhat-release)
+			major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
+			ARCH=$(uname -m)
+			output "\n${Green}${fullname} ${ARCH}${Color_Off}"
+		fi
+		set +e
+		updatePackage
+		installPackage
+		set -e
+		wgetfile="/usr/bin/wget"
+		curlfile="/usr/bin/curl"
+		if [ ! -f "$wgetfile" ] || [ ! -f "$curlfile" ]; then
+			output "${Red}required packages failed to install!${Color_Off}"
+			output "Please check the server's internet connection and DNS settings and run the installer again."
+			output "\n${Red}The operation aborted!${Color_Off}"
+			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			exit
+		fi
+		output "${Cyan}Installing ClamAV...${Color_Off}"
+		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+			dnf install epel-release -y
+			dnf install clamav clamav-update -y
+		else
+			yum install epel-release -y
+			yum install clamav clamav-update -y
+		fi
+		freshclam
+		mkdir -p /var/log/clamav
+		touch /var/log/clamav/daily_scan.log
+		chmod 755 /var/log/clamav
+		chmod 640 /var/log/clamav/daily_scan.log
+		wget http://$primarySite/modules/addons/easyservice/Installer/daily_clamscan.txt -O /usr/local/bin/daily_clamscan.sh
+		chmod +x /usr/local/bin/daily_clamscan.sh
+		setfacl -m u:root:rwx /var/log/clamav
+		setfacl -m u:root:rx /usr/local/bin/daily_clamscan.sh
+		grep "/usr/local/bin/daily_clamscan.sh" /var/spool/cron/root || echo "0 2 * * * /usr/local/bin/daily_clamscan.sh" >>/var/spool/cron/root
+		output "${Green}ClamAV successfully installed!${Color_Off}\n"
 	fi
 fi
