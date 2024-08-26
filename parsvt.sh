@@ -43,7 +43,7 @@ output() {
 startInstallation() {
 	echo -e "\nPlease enter the item number you want to use:"
 	echo -e "[${Cyan}1${Color_Off}] ${Cyan}Install ParsVT CRM${Color_Off}"
-	echo -e "[${Cyan}2${Color_Off}] ${Cyan}Repair server configs${Color_Off}"
+	echo -e "[${Cyan}2${Color_Off}] ${Cyan}Repair server configurations${Color_Off}"
 	echo -e "[${Cyan}3${Color_Off}] ${Cyan}Update ionCube loader${Color_Off}"
 	echo -e "[${Cyan}4${Color_Off}] ${Cyan}Install ClamAV (not recommended for low end servers)${Color_Off}"
 	echo -e "[${Yellow}5${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
