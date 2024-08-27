@@ -176,7 +176,7 @@ disableSELinux() {
 	output "\n${Cyan}Disabling SELinux...${Color_Off}"
 	STATUS=$(getenforce)
 	if [ "$STATUS" = "disabled" ] || [ "$STATUS" = "Disabled" ]; then
-		output "${Green}SELinux is already disabled!${Color_Off}\n"
+		output "${Green}SELinux is already disabled!${Color_Off}"
 	else
 		setenforce 0
 		sed -i -e 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
