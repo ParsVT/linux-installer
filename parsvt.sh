@@ -206,32 +206,32 @@ updatePackage() {
 				output "${Cyan}Updating installed packages...${Color_Off}"
 				yum install dnf -y
 				dnf update -y
-				output "${Green}Installed packages successfully updated!${Color_Off}\n"
+				output "${Green}Installed packages successfully updated!${Color_Off}"
 			else
 				output "\n${Cyan}Updating installed packages...${Color_Off}"
 				yum install dnf -y
 				dnf update -y
-				output "${Green}Installed packages successfully updated!${Color_Off}\n"
+				output "${Green}Installed packages successfully updated!${Color_Off}"
 			fi
 		else
 			output "\n${Cyan}Updating installed packages...${Color_Off}"
 			yum install dnf -y
 			dnf update -y
-			output "${Green}Installed packages successfully updated!${Color_Off}\n"
+			output "${Green}Installed packages successfully updated!${Color_Off}"
 		fi
 	elif [ "$major" = "7" ]; then
 		output "\n${Cyan}Updating installed packages...${Color_Off}"
 		yum install dnf -y
 		dnf update -y
-		output "${Green}Installed packages successfully updated!${Color_Off}\n"
+		output "${Green}Installed packages successfully updated!${Color_Off}"
 	else
 		output "\n${Cyan}Updating installed packages...${Color_Off}"
 		yum update -y
-		output "${Green}Installed packages successfully updated!${Color_Off}\n"
+		output "${Green}Installed packages successfully updated!${Color_Off}"
 	fi
 }
 installPackage() {
-	output "${Cyan}Installing required packages...${Color_Off}"
+	output "\n${Cyan}Installing required packages...${Color_Off}"
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
 		dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
 	else
