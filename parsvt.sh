@@ -85,7 +85,11 @@ checkInternetConnection() {
 }
 setDNS() {
 	echo -e "\nPlease enter the item number you want to use as DNS during installation:\n"
-	echo -e "[${Cyan}1${Color_Off}] Shecan (recommended)"
+	if [ "$installationType" = "Install" ]; then
+		echo -e "[${Cyan}1${Color_Off}] Shecan Pro (recommended)"
+	else
+		echo -e "[${Cyan}1${Color_Off}] Shecan (recommended)"
+	fi
 	echo -e "[${Cyan}2${Color_Off}] Google"
 	echo -e "[${Cyan}3${Color_Off}] Cloudflare"
 	echo -e "[${Yellow}4${Color_Off}] Continue without changing DNS\n"
