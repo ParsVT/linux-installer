@@ -3,11 +3,13 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-06-05
+# Update: 1403-06-10
 # #########################################
 set -e
-shecanDNS1="178.22.122.101"
-shecanDNS2="185.51.200.1"
+shecanProDNS1="178.22.122.101"
+shecanProDNS2="185.51.200.1"
+shecanDNS1="178.22.122.100"
+shecanDNS2="185.51.200.2"
 googleDNS1="8.8.8.8"
 googleDNS2="8.8.4.4"
 cloudflareDNS1="1.1.1.1"
@@ -83,17 +85,22 @@ checkInternetConnection() {
 }
 setDNS() {
 	echo -e "\nPlease enter the item number you want to use as DNS during installation:\n"
-	echo -e "[${Cyan}1${Color_Off}] Shecan Pro (recommended)"
+	echo -e "[${Cyan}1${Color_Off}] Shecan (recommended)"
 	echo -e "[${Cyan}2${Color_Off}] Google"
 	echo -e "[${Cyan}3${Color_Off}] Cloudflare"
 	echo -e "[${Yellow}4${Color_Off}] Continue without changing DNS\n"
 	read -p "Please select an item (1-4): " rundns
 	if [ "$rundns" == "1" ]; then
-		shecanURI=$(echo -n "${RESPONSES[3]}" | base64 --decode)
-		curl -s -o /dev/null "${shecanURI}"
-		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
-		curl -s -o /dev/null "${shecanURI}"
+		if [ "$installationType" = "Install" ]; then
+			shecanURI=$(echo -n "${RESPONSES[3]}" | base64 --decode)
+			curl -s -o /dev/null "${shecanURI}"
+			mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
+			echo -e "nameserver ${shecanProDNS1}\nnameserver ${shecanProDNS2}\n" >/etc/resolv.conf
+			curl -s -o /dev/null "${shecanURI}"
+		else
+			mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
+			echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
+		fi
 	elif [ "$rundns" == "2" ]; then
 		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
@@ -830,9 +837,6 @@ expect eof
 		output "For more information, visit: www.parsvt.com\n"
 	fi
 fi
-if [ "$rundns" != "5" ]; then
-	restoreDNS
-fi
 if [ "$installationType" = "Repair" ]; then
 	if [ ! -f "/var/www/html/config.inc.php" ]; then
 		output "\n${Red}VtigerCRM is not installed!${Color_Off}"
@@ -852,6 +856,7 @@ if [ "$installationType" = "Repair" ]; then
 		major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
 		ARCH=$(uname -m)
 		output "\n${Green}${fullname} ${ARCH}${Color_Off}"
+		setDNS
 		disableSELinux
 		set +e
 		updatePackage
@@ -864,6 +869,9 @@ if [ "$installationType" = "Repair" ]; then
 			output "Please check the server's internet connection and DNS settings and run the script again."
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		fi
 		set +e
@@ -874,6 +882,9 @@ if [ "$installationType" = "Repair" ]; then
 			output "${Red}Remi repository is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		else
 			output "${Green}Remi repository is already installed!${Color_Off}\n"
@@ -882,6 +893,9 @@ if [ "$installationType" = "Repair" ]; then
 			output "${Red}PHP is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		else
 			output "${Green}PHP is already installed!${Color_Off}\n"
@@ -910,6 +924,9 @@ if [ "$installationType" = "Repair" ]; then
 					output "${Red}ionCube loader version must be greater than 10.0.0${Color_Off}"
 					output "\n${Red}The operation aborted!${Color_Off}"
 					output "${Yellow}www.parsvt.com${Color_Off}\n"
+					if [ "$rundns" != "5" ]; then
+						restoreDNS
+					fi
 					exit
 				else
 					output "ionCube loader is not installed!"
@@ -922,6 +939,9 @@ if [ "$installationType" = "Repair" ]; then
 				output "${Red}PHP version must be greater than 5.5${Color_Off}"
 				output "\n${Red}The operation aborted!${Color_Off}"
 				output "${Yellow}www.parsvt.com${Color_Off}\n"
+				if [ "$rundns" != "5" ]; then
+					restoreDNS
+				fi
 				exit
 			fi
 		fi
@@ -929,6 +949,9 @@ if [ "$installationType" = "Repair" ]; then
 			output "${Red}Apache is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		else
 			output "${Green}Apache is already installed!${Color_Off}\n"
@@ -992,6 +1015,9 @@ if [ "$installationType" = "Repair" ]; then
 			output "${Red}MySQL is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		fi
 		installJava
@@ -1026,6 +1052,7 @@ if [ "$installationType" = "ionCube" ]; then
 			ARCH=$(uname -m)
 			output "\n${Green}${fullname} ${ARCH}${Color_Off}"
 		fi
+		setDNS
 		set +e
 		installPackage
 		set -e
@@ -1036,12 +1063,18 @@ if [ "$installationType" = "ionCube" ]; then
 			output "Please check the server's internet connection and DNS settings and run the installer again."
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		fi
 		if ! command -v "php" &>/dev/null; then
 			output "${Red}PHP is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		else
 			output "${Green}PHP is already installed!${Color_Off}\n"
@@ -1060,6 +1093,9 @@ if [ "$installationType" = "ionCube" ]; then
 				rm -rf /root/IC.php*
 				if [ "$IONCUBE_VER" = "Ok" ]; then
 					output "Current ionCube loader version: ${Green}${IONCUBE_VERSION}${Color_Off}\n"
+					if [ "$rundns" != "5" ]; then
+						restoreDNS
+					fi
 					exit
 				elif [ "$IONCUBE_VER" = "Upgrade" ]; then
 					output "Current ionCube loader version: ${Red}${IONCUBE_VERSION}${Color_Off}"
@@ -1071,6 +1107,9 @@ if [ "$installationType" = "ionCube" ]; then
 					output "${Red}ionCube loader version must be greater than 10.0.0${Color_Off}"
 					output "\n${Red}The operation aborted!${Color_Off}"
 					output "${Yellow}www.parsvt.com${Color_Off}\n"
+					if [ "$rundns" != "5" ]; then
+						restoreDNS
+					fi
 					exit
 				else
 					output "ionCube loader is not installed!"
@@ -1083,6 +1122,9 @@ if [ "$installationType" = "ionCube" ]; then
 				output "${Red}PHP version must be greater than 5.5${Color_Off}"
 				output "\n${Red}The operation aborted!${Color_Off}"
 				output "${Yellow}www.parsvt.com${Color_Off}\n"
+				if [ "$rundns" != "5" ]; then
+					restoreDNS
+				fi
 				exit
 			fi
 		fi
@@ -1104,6 +1146,7 @@ if [ "$installationType" = "clamAV" ]; then
 			ARCH=$(uname -m)
 			output "\n${Green}${fullname} ${ARCH}${Color_Off}"
 		fi
+		setDNS
 		set +e
 		updatePackage
 		installPackage
@@ -1115,6 +1158,9 @@ if [ "$installationType" = "clamAV" ]; then
 			output "Please check the server's internet connection and DNS settings and run the installer again."
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			if [ "$rundns" != "5" ]; then
+				restoreDNS
+			fi
 			exit
 		fi
 		output "${Cyan}Installing ClamAV...${Color_Off}"
@@ -1137,4 +1183,7 @@ if [ "$installationType" = "clamAV" ]; then
 		grep "/usr/local/bin/daily_clamscan.sh" /var/spool/cron/root || echo "0 2 * * * /usr/local/bin/daily_clamscan.sh" >>/var/spool/cron/root
 		output "${Green}ClamAV successfully installed!${Color_Off}\n"
 	fi
+fi
+if [ "$rundns" != "5" ]; then
+	restoreDNS
 fi
