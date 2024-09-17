@@ -1032,7 +1032,9 @@ if [ "$installationType" = "Repair" ]; then
 		find -type f -exec chmod 644 {} \;
 		cd /root
 		output "${Green}Permissions of directories and files successfully fixed!${Color_Off}\n"
+		set +e
 		openPorts
+		set -e
 		output "\n${Yellow} ___            __   _______              "
 		output "| _ \__ _ _ _ __\ \ / /_   _|__ ___ _ __  "
 		output "|  _/ _\` | '_(_-<\ V /  | |_/ _/ _ \ '  \ "
