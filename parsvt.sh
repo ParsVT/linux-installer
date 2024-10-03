@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-06-10
+# Update: 1403-07-12
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -635,8 +635,8 @@ if [ "$installationType" = "Install" ]; then
 		mkdir -p timezonedb
 		cd timezonedb
 		getPHPConfigPath
-		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.1.tgz -O timezonedb-2024.1.tgz
-		pear install timezonedb-2024.1.tgz
+		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.2.tgz -O timezonedb-2024.2.tgz
+		pear install timezonedb-2024.2.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 			echo "extension=timezonedb.so" >>"$PHPINI"
 		fi
@@ -811,10 +811,10 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.201-1.noarch.rpm -y
+			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.202-1.noarch.rpm -y
 			dnf install webmin -y
 		else
-			yum install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.201-1.noarch.rpm -y
+			yum install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.202-1.noarch.rpm -y
 			yum install webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
@@ -966,8 +966,8 @@ if [ "$installationType" = "Repair" ]; then
 		cd timezonedb
 		getPHPConfigPath
 		set +e
-		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.1.tgz -O timezonedb-2024.1.tgz
-		pear install -f timezonedb-2024.1.tgz
+		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.2.tgz -O timezonedb-2024.2.tgz
+		pear install -f timezonedb-2024.2.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 			echo "extension=timezonedb.so" >>"$PHPINI"
 		fi
