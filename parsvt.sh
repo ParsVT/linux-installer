@@ -440,15 +440,7 @@ if [ "$installationType" = "Install" ]; then
 					output "${Yellow}www.parsvt.com${Color_Off}\n"
 					exit
 				fi
-				echo -n "Should IP address ($(tput bold)${ipsarray[$DEVS]}$(tput sgr0)) be used for licensing? (y/n): "
-				read yesno
-				if [ "$yesno" = "n" ]; then
-					output "\n${Red}The operation aborted!${Color_Off}"
-					output "${Yellow}www.parsvt.com${Color_Off}\n"
-					exit
-				else
-					ETH_DEV=${ipsarray[$DEVS]}
-				fi
+				ETH_DEV=${ipsarray[$DEVS]}
 			else
 				ETH_DEV=${ipsarray[0]}
 			fi
@@ -458,7 +450,7 @@ if [ "$installationType" = "Install" ]; then
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
 			exit
 		fi
-		output "\nParsVT CRM will be installed on $(tput bold)${ETH_DEV}$(tput sgr0)\n"
+		output "\nParsVT CRM will be installed on ${Green}${ETH_DEV}${Color_Off}\n"
 		checkLicense
 		RESPONSE=$(curl -fs -d "licenseid=$LICENSEKEY&serverip=$ETH_DEV" -H "Content-Type: application/x-www-form-urlencoded" -X POST "http://$primarySite/modules/addons/easyservice/Installer/check.php")
 		IFS=';' read -ra RESPONSES <<<"$RESPONSE"
