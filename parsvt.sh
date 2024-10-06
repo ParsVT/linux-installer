@@ -1132,8 +1132,8 @@ if [ "$installationType" = "clamAV" ]; then
 	checkInternetConnection
 	if [ ! -f "/etc/redhat-release" ]; then
 		output "\n${Red}Operating system is not supported!${Color_Off}"
-		output "ionCube loader installer only installs on CentOS and RHEL-based Linuxes."
-		output "You have to install/update ionCube loader manually."
+		output "ClamAV installer only installs on CentOS and RHEL-based Linuxes."
+		output "You have to install ClamAV manually."
 		output "\n${Red}The operation aborted!${Color_Off}"
 		output "${Yellow}www.parsvt.com${Color_Off}\n"
 		exit
