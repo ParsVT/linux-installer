@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-07-12
+# Update: 1403-07-17
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -794,6 +794,9 @@ expect eof
 		output "${Green}ParsVT CRM package successfully installed!${Color_Off}\n"
 		installJava
 		output "${Cyan}Setting backup directory...${Color_Off}"
+		if [ -f "/home/backup-$DBNAME.sh" ]; then
+			rm -rf "/home/backup-$DBNAME.sh"
+		fi
 		output "#!/bin/bash\n delfile=\$(date --date='-7 day' +'%Y-%d-%m')\n yest=\$(date --date='today' +'%Y-%d-%m')\n backupdirectory='$SETUPDIR2'\n storagedirectory='$backupdirectory'\n mysqldump --user=$DBUSER --password=$DBPassword --host=$DBHOST $DBNAME | gzip -c > \$storagedirectory/$DBNAME-\$yest.sql.gz\n tar -czf \$storagedirectory/$DBNAME-\$yest.tar.gz \$backupdirectory\n rm -rf \$storagedirectory/$DBNAME-\$delfile.sql.gz*\n rm -rf \$storagedirectory/$DBNAME-\$delfile.tar.gz*" >/home/backup-$DBNAME.sh
 		if [ ! -d $backupdirectory ]; then
 			mkdir -p $backupdirectory
