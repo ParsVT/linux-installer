@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-07-17
+# Update: 1403-08-27
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -484,6 +484,12 @@ if [ "$installationType" = "Install" ]; then
 			output "${Cyan}Installing Remi repository...${Color_Off}"
 			file="/etc/yum.repos.d/remi.repo"
 			if [ ! -f "$file" ]; then
+				if [ "$major" = "8" ]; then
+					dnf config-manager --set-enabled powertools
+				fi
+				if [ "$major" = "9" ]; then
+					dnf config-manager --set-enabled crb
+				fi
 				dnf install http://$primarySite/modules/addons/easyservice/Installer/epel-release-latest-$major.noarch.rpm -y
 				if [ "$major" = "9" ]; then
 					set +e
@@ -503,9 +509,6 @@ if [ "$installationType" = "Install" ]; then
 		if [ "$major" = "8" ]; then
 			dnf config-manager --set-enabled powertools
 			dnf --enablerepo=remi,powertools install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
-			set +e
-			dnf --enablerepo=remi,powertools install epel-next-release -y
-			set -e
 		elif [ "$major" = "9" ]; then
 			dnf config-manager --set-enabled crb
 			dnf --enablerepo=remi,crb install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
@@ -538,7 +541,7 @@ if [ "$installationType" = "Install" ]; then
 				dnf install --enablerepo=remi --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel -y
 			else
 				output "${Cyan}Installing Apache and PHP...${Color_Off}"
-				yum install --enablerepo=remi,remi-php72 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql curl-devel -y
+				yum install --enablerepo=remi,remi-php74 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel -y
 			fi
 			if [ "$major" = "6" ]; then
 				chkconfig httpd on
@@ -556,9 +559,9 @@ if [ "$installationType" = "Install" ]; then
 			if ! command -v "httpd" &>/dev/null; then
 				output "${Cyan}Installing Apache...${Color_Off}"
 				if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
-					dnf install --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot -y
+					dnf install --enablerepo=remi --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot -y
 				else
-					yum install --enablerepo=remi,remi-php72 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot -y
+					yum install --enablerepo=remi --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot -y
 				fi
 				if [ "$major" = "6" ]; then
 					chkconfig httpd on
@@ -680,7 +683,7 @@ if [ "$installationType" = "Install" ]; then
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
 				dnf install --enablerepo=remi --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
 			else
-				yum install --enablerepo=remi,remi-php72 --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
+				yum install --enablerepo=remi --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
 			fi
 			wget -q http://$primarySite/modules/addons/easyservice/Installer/pma.txt -O /etc/httpd/conf.d/phpMyAdmin.conf
 			DBPassword=$(date +%s | sha256sum | base64 | head -c 20)
