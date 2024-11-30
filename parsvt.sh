@@ -291,19 +291,19 @@ installJava() {
 		output "${Cyan}Installing Java libraries...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
 			if [ "$ARCH" = "x86_64" ]; then
-				dnf install http://$secondarySite/JAVA/jdk-8u421-linux-x64.rpm -y
-				dnf install http://$secondarySite/JAVA/jre-8u421-linux-x64.rpm -y
+				dnf install http://$secondarySite/JAVA/jdk-8u431-linux-x64.rpm -y
+				dnf install http://$secondarySite/JAVA/jre-8u431-linux-x64.rpm -y
 			else
-				dnf install http://$secondarySite/JAVA/jdk-8u421-linux-i586.rpm -y
-				dnf install http://$secondarySite/JAVA/jre-8u421-linux-i586.rpm -y
+				dnf install http://$secondarySite/JAVA/jdk-8u431-linux-i586.rpm -y
+				dnf install http://$secondarySite/JAVA/jre-8u431-linux-i586.rpm -y
 			fi
 		else
 			if [ "$ARCH" = "x86_64" ]; then
-				yum install http://$secondarySite/JAVA/jdk-8u421-linux-x64.rpm -y
-				yum install http://$secondarySite/JAVA/jre-8u421-linux-x64.rpm -y
+				yum install http://$secondarySite/JAVA/jdk-8u431-linux-x64.rpm -y
+				yum install http://$secondarySite/JAVA/jre-8u431-linux-x64.rpm -y
 			else
-				yum install http://$secondarySite/JAVA/jdk-8u421-linux-i586.rpm -y
-				yum install http://$secondarySite/JAVA/jre-8u421-linux-i586.rpm -y
+				yum install http://$secondarySite/JAVA/jdk-8u431-linux-i586.rpm -y
+				yum install http://$secondarySite/JAVA/jre-8u431-linux-i586.rpm -y
 			fi
 		fi
 		output "${Green}Java libraries successfully installed!${Color_Off}\n"
