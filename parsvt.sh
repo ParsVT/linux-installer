@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-08-27
+# Update: 1403-10-08
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -167,7 +167,7 @@ getPHPConfigPath() {
 	fi
 }
 restartApache() {
-	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		systemctl restart httpd
 		set +e
 		systemctl restart php-fpm
@@ -177,7 +177,7 @@ restartApache() {
 	fi
 }
 restartDatabase() {
-	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		systemctl restart mariadb
 	else
 		service mariadb restart
@@ -196,7 +196,7 @@ disableSELinux() {
 	fi
 }
 updatePackage() {
-	if [ "$major" = "8" ] || [ "$major" = "9" ]; then
+	if [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
 			if ! grep -rnwq "/etc/redhat-release" -e "Stream"; then
 				output "\n${Cyan}Converting from CentOS Linux to CentOS Stream...${Color_Off}"
@@ -232,12 +232,12 @@ updatePackage() {
 }
 installPackage() {
 	output "\n${Cyan}Installing required packages...${Color_Off}"
-	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
 	else
 		yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
 	fi
-	if [ "$major" = "9" ]; then
+	if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		dnf install initscripts -y
 	fi
 	output "${Green}Required packages successfully installed!${Color_Off}\n"
@@ -245,7 +245,7 @@ installPackage() {
 installNTP() {
 	file="/etc/ntp.conf"
 	if [ ! -f "$file" ]; then
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 			output "${Cyan}Installing Chrony...${Color_Off}"
 			dnf install chrony -y
 			systemctl start chronyd
@@ -272,7 +272,7 @@ installIonCube() {
 	tar xfz ioncube_loaders_lin_x86-64.tar.gz
 	PHP_CONFD="/etc/php.d"
 	PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
-	if [ "$major" = "8" ] || [ "$major" = "9" ]; then
+	if [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		PHP_EXT_DIR=$(php -r "echo ini_get('extension_dir');")
 	else
 		PHP_EXT_DIR=$(php-config --extension-dir)
@@ -289,7 +289,7 @@ installJava() {
 		output "${Green}Java libraries are already installed!${Color_Off}\n"
 	else
 		output "${Cyan}Installing Java libraries...${Color_Off}"
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 			if [ "$ARCH" = "x86_64" ]; then
 				dnf install http://$secondarySite/JAVA/jdk-8u431-linux-x64.rpm -y
 				dnf install http://$secondarySite/JAVA/jre-8u431-linux-x64.rpm -y
@@ -311,7 +311,7 @@ installJava() {
 }
 openPorts() {
 	output "${Cyan}Opening required firewall ports...${Color_Off}"
-	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		systemctl enable firewalld
 		systemctl restart firewalld
 		firewall-cmd --zone=public --permanent --add-service=http
@@ -480,14 +480,14 @@ if [ "$installationType" = "Install" ]; then
 			exit
 		fi
 		installNTP
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 			output "${Cyan}Installing Remi repository...${Color_Off}"
 			file="/etc/yum.repos.d/remi.repo"
 			if [ ! -f "$file" ]; then
 				if [ "$major" = "8" ]; then
 					dnf config-manager --set-enabled powertools
 				fi
-				if [ "$major" = "9" ]; then
+				if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 					dnf config-manager --set-enabled crb
 				fi
 				dnf install http://$primarySite/modules/addons/easyservice/Installer/epel-release-latest-$major.noarch.rpm -y
@@ -509,7 +509,7 @@ if [ "$installationType" = "Install" ]; then
 		if [ "$major" = "8" ]; then
 			dnf config-manager --set-enabled powertools
 			dnf --enablerepo=remi,powertools install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
-		elif [ "$major" = "9" ]; then
+		elif [ "$major" = "9" ] || [ "$major" = "10" ]; then
 			dnf config-manager --set-enabled crb
 			dnf --enablerepo=remi,crb install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
 			set +e
@@ -534,7 +534,7 @@ if [ "$installationType" = "Install" ]; then
 			if [ "$major" = "7" ]; then
 				output "${Cyan}Installing Apache and PHP...${Color_Off}"
 				dnf install --enablerepo=remi,remi-php74 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel -y
-			elif [ "$major" = "8" ] || [ "$major" = "9" ]; then
+			elif [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 				output "${Cyan}Installing Apache and PHP...${Color_Off}"
 				dnf module reset php -y
 				dnf module install php:remi-7.4 -y
@@ -558,7 +558,7 @@ if [ "$installationType" = "Install" ]; then
 			output "${Green}PHP is already installed!${Color_Off}\n"
 			if ! command -v "httpd" &>/dev/null; then
 				output "${Cyan}Installing Apache...${Color_Off}"
-				if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+				if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 					dnf install --enablerepo=remi --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot -y
 				else
 					yum install --enablerepo=remi --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot -y
@@ -680,7 +680,7 @@ if [ "$installationType" = "Install" ]; then
 		else
 			removeMySQL
 			output "${Cyan}Installing MySQL/MariaDB...${Color_Off}"
-			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 				dnf install --enablerepo=remi --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
 			else
 				yum install --enablerepo=remi --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
@@ -690,13 +690,13 @@ if [ "$installationType" = "Install" ]; then
 			output "MySQL Username: ${DBUSER}\nMySQL Password: ${DBPassword}" >/root/mysql.txt
 			restartDatabase
 			restartApache
-			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 				systemctl enable mariadb
 			else
 				chkconfig mariadb on
 			fi
 			mysqladmin -uroot create $DBNAME
-			if [ "$major" = "9" ]; then
+			if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 				SECURE_MYSQL=$(expect -c "
 set timeout 10
 spawn mysql_secure_installation
@@ -794,6 +794,10 @@ expect eof
 		grep "http://$CRMURL/vtigercron.php" /var/spool/cron/root || echo "*/15 * * * * wget --spider \"http://$CRMURL/vtigercron.php\" >/dev/null 2>&1" >>/var/spool/cron/root
 		rm -rf $SETUPDIR/_install*
 		rm -rf $SETUPDIR/_extensions*
+		dofile="$SETUPDIR/test/data/tmp/doConfig.php"
+		if [ -f "$dofile" ]; then
+			wget -q -o /dev/null -O /dev/null "http://$CRMURL/test/data/tmp/doConfig.php"
+		fi
 		output "${Green}ParsVT CRM package successfully installed!${Color_Off}\n"
 		installJava
 		output "${Cyan}Setting backup directory...${Color_Off}"
@@ -808,7 +812,7 @@ expect eof
 		grep "sh /home/backup-$DBNAME.sh" /var/spool/cron/root || echo "0 22 * * * sh /home/backup-$DBNAME.sh >/dev/null 2>&1" >>/var/spool/cron/root
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.202-1.noarch.rpm -y
 			dnf install webmin -y
 		else
@@ -1168,7 +1172,7 @@ if [ "$installationType" = "clamAV" ]; then
 			exit
 		fi
 		output "${Cyan}Installing ClamAV...${Color_Off}"
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ]; then
+		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 			dnf install epel-release -y
 			dnf install clamav clamav-update -y
 		else
