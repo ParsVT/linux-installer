@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-10-08
+# Update: 1403-10-09
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -283,6 +283,50 @@ installIonCube() {
 	rm -rf ioncube_loaders_lin*.tar.gz*
 	cd /root
 	restartApache
+}
+SetRequirements() {
+	output "${Cyan}Setting ParsVT requirements...${Color_Off}"
+	getPHPConfigPath
+	sed -i -e 's/max_execution_time = 30/max_execution_time = 600/g' $PHPINI
+	sed -i -e 's/memory_limit = 128M/memory_limit = 512M/g' $PHPINI
+	sed -i -e 's/allow_call_time_pass_reference = Off/allow_call_time_pass_reference = On/g' $PHPINI
+	sed -i -e 's/short_open_tag = Off/short_open_tag = On/g' $PHPINI
+	sed -i -e 's/;max_input_vars = 1000/max_input_vars = 10000/g' $PHPINI
+	sed -i -e 's/; max_input_vars = 1000/max_input_vars = 10000/g' $PHPINI
+	sed -i -e 's/log_errors = On/log_errors = Off/g' $PHPINI
+	sed -i -e 's/display_errors = Off/display_errors = On/g' $PHPINI
+	sed -i -e 's/error_reporting = E_ALL \& ~E_DEPRECATED \& ~E_STRICT/error_reporting = E_ALL \& ~E_NOTICE \& ~E_WARNING \& ~E_DEPRECATED \& ~E_STRICT/g' $PHPINI
+	sed -i -e 's/output_buffering = Off/output_buffering = 4096/g' $PHPINI
+	sed -i -e 's/file_uploads = Off/file_uploads = On/g' $PHPINI
+	sed -i -e 's/post_max_size = 8M/post_max_size = 128M/g' $PHPINI
+	sed -i -e 's/upload_max_filesize = 2M/upload_max_filesize = 128M/g' $PHPINI
+	if ! grep -rnwq "$PHPINI" -e "max_input_time = 600"; then
+		sed -i -e 's/max_input_time = 60/max_input_time = 600/g' $PHPINI
+	fi
+	sed -i -e 's/zlib.output_compression = On/zlib.output_compression = Off/g' $PHPINI
+	sed -i -e 's/session.gc_maxlifetime = 1440/session.gc_maxlifetime = 21600/g' $PHPINI
+	sed -i -e 's/session.gc_divisor = 500/session.gc_divisor = 1000/g' $PHPINI
+	sed -i -e 's/session.gc_probability = 0/session.gc_probability = 1/g' $PHPINI
+	if ! grep -rnwq "$PHPINI" -e "default_socket_timeout = 600"; then
+		sed -i -e 's/default_socket_timeout = 60/default_socket_timeout = 600/g' $PHPINI
+	fi
+	sed -i -e 's/session.use_strict_mode = 0/session.use_strict_mode = 1/g' $PHPINI
+	sed -i -e 's/session.cookie_httponly =/session.cookie_httponly = 1/g' $PHPINI
+	sed -i -e 's/session.cookie_secure = 1/;session.cookie_secure =/g' $PHPINI
+	sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
+	sed -i -e 's/;date.timezone =/date.timezone = "Asia\/Tehran"/g' $PHPINI
+	sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
+	set +e
+	sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
+	sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
+	sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
+	set -e
+	sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
+	if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "TimeOut"; then
+		sed -i '/Listen 80/a TimeOut 600' /etc/httpd/conf/httpd.conf
+	fi
+	restartApache
+	output "${Green}ParsVT requirements have been set!${Color_Off}\n"
 }
 installJava() {
 	if java -version 2>&1 >/dev/null | grep -q "java version"; then
@@ -633,7 +677,7 @@ if [ "$installationType" = "Install" ]; then
 		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.2.tgz -O timezonedb-2024.2.tgz
 		pear install timezonedb-2024.2.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
-			echo "extension=timezonedb.so" >>"$PHPINI"
+			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
 		fi
 		restartApache
 		date
@@ -641,39 +685,7 @@ if [ "$installationType" = "Install" ]; then
 		rm -rf /root/timezonedb*
 		cd /root
 		output "${Green}timezonedb extension successfully installed!${Color_Off}\n"
-		output "${Cyan}Setting ParsVT requirements...${Color_Off}"
-		getPHPConfigPath
-		sed -i -e 's/max_execution_time = 30/max_execution_time = 600/g' $PHPINI
-		sed -i -e 's/memory_limit = 128M/memory_limit = 512M/g' $PHPINI
-		sed -i -e 's/allow_call_time_pass_reference = Off/allow_call_time_pass_reference = On/g' $PHPINI
-		sed -i -e 's/short_open_tag = Off/short_open_tag = On/g' $PHPINI
-		sed -i -e 's/;max_input_vars = 1000/max_input_vars = 10000/g' $PHPINI
-		sed -i -e 's/; max_input_vars = 1000/max_input_vars = 10000/g' $PHPINI
-		sed -i -e 's/log_errors = On/log_errors = Off/g' $PHPINI
-		sed -i -e 's/display_errors = Off/display_errors = On/g' $PHPINI
-		sed -i -e 's/error_reporting = E_ALL \& ~E_DEPRECATED \& ~E_STRICT/error_reporting = E_ALL \& ~E_NOTICE \& ~E_WARNING \& ~E_DEPRECATED \& ~E_STRICT/g' $PHPINI
-		sed -i -e 's/output_buffering = Off/output_buffering = 4096/g' $PHPINI
-		sed -i -e 's/file_uploads = Off/file_uploads = On/g' $PHPINI
-		sed -i -e 's/post_max_size = 8M/post_max_size = 128M/g' $PHPINI
-		sed -i -e 's/upload_max_filesize = 2M/upload_max_filesize = 128M/g' $PHPINI
-		sed -i -e 's/max_input_time = 60/max_input_time = 600/g' $PHPINI
-		sed -i -e 's/zlib.output_compression = On/zlib.output_compression = Off/g' $PHPINI
-		sed -i -e 's/session.gc_maxlifetime = 1440/session.gc_maxlifetime = 21600/g' $PHPINI
-		sed -i -e 's/session.gc_divisor = 500/session.gc_divisor = 1000/g' $PHPINI
-		sed -i -e 's/session.gc_probability = 0/session.gc_probability = 1/g' $PHPINI
-		sed -i -e 's/default_socket_timeout = 60/default_socket_timeout = 600/g' $PHPINI
-		sed -i -e 's/session.use_strict_mode = 0/session.use_strict_mode = 1/g' $PHPINI
-		sed -i -e 's/session.cookie_httponly =/session.cookie_httponly = 1/g' $PHPINI
-		sed -i -e 's/session.cookie_secure = 1/;session.cookie_secure =/g' $PHPINI
-		sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
-		sed -i -e 's/;date.timezone =/date.timezone = "Asia\/Tehran"/g' $PHPINI
-		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
-		sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
-		sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
-		sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
-		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
-		restartApache
-		output "${Green}ParsVT requirements have been set!${Color_Off}\n"
+		SetRequirements
 		if type mysql >/dev/null 2>&1; then
 			output "${Green}MySQL is already installed!${Color_Off}\n"
 			mysqlConnection
@@ -971,7 +983,7 @@ if [ "$installationType" = "Repair" ]; then
 		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.2.tgz -O timezonedb-2024.2.tgz
 		pear install -f timezonedb-2024.2.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
-			echo "extension=timezonedb.so" >>"$PHPINI"
+			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
 		fi
 		set -e
 		restartApache
@@ -980,41 +992,7 @@ if [ "$installationType" = "Repair" ]; then
 		rm -rf /root/timezonedb*
 		cd /root
 		output "${Green}timezonedb extension successfully installed!${Color_Off}\n"
-		output "${Cyan}Setting ParsVT requirements...${Color_Off}"
-		getPHPConfigPath
-		sed -i -e 's/max_execution_time = 30/max_execution_time = 600/g' $PHPINI
-		sed -i -e 's/memory_limit = 128M/memory_limit = 512M/g' $PHPINI
-		sed -i -e 's/allow_call_time_pass_reference = Off/allow_call_time_pass_reference = On/g' $PHPINI
-		sed -i -e 's/short_open_tag = Off/short_open_tag = On/g' $PHPINI
-		sed -i -e 's/;max_input_vars = 1000/max_input_vars = 10000/g' $PHPINI
-		sed -i -e 's/; max_input_vars = 1000/max_input_vars = 10000/g' $PHPINI
-		sed -i -e 's/log_errors = On/log_errors = Off/g' $PHPINI
-		sed -i -e 's/display_errors = Off/display_errors = On/g' $PHPINI
-		sed -i -e 's/error_reporting = E_ALL \& ~E_DEPRECATED \& ~E_STRICT/error_reporting = E_ALL \& ~E_NOTICE \& ~E_WARNING \& ~E_DEPRECATED \& ~E_STRICT/g' $PHPINI
-		sed -i -e 's/output_buffering = Off/output_buffering = 4096/g' $PHPINI
-		sed -i -e 's/file_uploads = Off/file_uploads = On/g' $PHPINI
-		sed -i -e 's/post_max_size = 8M/post_max_size = 128M/g' $PHPINI
-		sed -i -e 's/upload_max_filesize = 2M/upload_max_filesize = 128M/g' $PHPINI
-		sed -i -e 's/max_input_time = 60 /max_input_time = 600/g' $PHPINI
-		sed -i -e 's/zlib.output_compression = On/zlib.output_compression = Off/g' $PHPINI
-		sed -i -e 's/session.gc_maxlifetime = 1440/session.gc_maxlifetime = 21600/g' $PHPINI
-		sed -i -e 's/session.gc_divisor = 500/session.gc_divisor = 1000/g' $PHPINI
-		sed -i -e 's/session.gc_probability = 0/session.gc_probability = 1/g' $PHPINI
-		sed -i -e 's/default_socket_timeout = 60 /default_socket_timeout = 600/g' $PHPINI
-		sed -i -e 's/session.use_strict_mode = 0/session.use_strict_mode = 1/g' $PHPINI
-		sed -i -e 's/session.cookie_httponly =/session.cookie_httponly = 1/g' $PHPINI
-		sed -i -e 's/session.cookie_secure = 1/;session.cookie_secure =/g' $PHPINI
-		sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
-		sed -i -e 's/;date.timezone =/date.timezone = "Asia\/Tehran"/g' $PHPINI
-		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
-		set +e
-		sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
-		sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
-		sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
-		set -e
-		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
-		restartApache
-		output "${Green}ParsVT requirements have been set!${Color_Off}\n"
+		SetRequirements
 		if type mysql >/dev/null 2>&1; then
 			output "${Green}MySQL is already installed!${Color_Off}\n"
 		else
