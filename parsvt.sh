@@ -779,8 +779,8 @@ expect eof
 		unzip -q -o $SETUPDIR/extensions.zip -d $SETUPDIR
 		chown -R apache:apache $SETUPDIR
 		cd $SETUPDIR
-		find -type d -exec chmod 755 {} \;
-		find -type f -exec chmod 644 {} \;
+		find -type d -exec chmod 0755 {} \;
+		find -type f -exec chmod 0644 {} \;
 		cd /root
 		rm -rf $SETUPDIR/latest.zip*
 		rm -rf $SETUPDIR/extensions.zip*
@@ -1008,8 +1008,8 @@ if [ "$installationType" = "Repair" ]; then
 		output "${Cyan}Fixing permissions of directories and files...${Color_Off}"
 		chown -R apache:apache /var/www/html
 		cd /var/www/html
-		find -type d -exec chmod 755 {} \;
-		find -type f -exec chmod 644 {} \;
+		find -type d -exec chmod 0755 {} \;
+		find -type f -exec chmod 0644 {} \;
 		cd /root
 		output "${Green}Permissions of directories and files successfully fixed!${Color_Off}\n"
 		set +e
@@ -1160,8 +1160,8 @@ if [ "$installationType" = "clamAV" ]; then
 		freshclam
 		mkdir -p /var/log/clamav
 		touch /var/log/clamav/daily_scan.log
-		chmod 755 /var/log/clamav
-		chmod 640 /var/log/clamav/daily_scan.log
+		chmod 0755 /var/log/clamav
+		chmod 0640 /var/log/clamav/daily_scan.log
 		wget http://$primarySite/modules/addons/easyservice/Installer/daily_clamscan.txt -O /usr/local/bin/daily_clamscan.sh
 		chmod +x /usr/local/bin/daily_clamscan.sh
 		setfacl -m u:root:rwx /var/log/clamav
