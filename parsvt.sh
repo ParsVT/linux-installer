@@ -817,10 +817,6 @@ expect eof
 		grep "http://$CRMURL/vtigercron.php" /var/spool/cron/root || echo "*/15 * * * * wget --spider \"http://$CRMURL/vtigercron.php\" >/dev/null 2>&1" >>/var/spool/cron/root
 		rm -rf $SETUPDIR/_install*
 		rm -rf $SETUPDIR/_extensions*
-		dofile="$SETUPDIR/test/data/tmp/doConfig.php"
-		if [ -f "$dofile" ]; then
-			wget -q -o /dev/null -O /dev/null "http://$CRMURL/test/data/tmp/doConfig.php"
-		fi
 		output "${Green}ParsVT CRM package successfully installed!${Color_Off}\n"
 		installJava
 		output "${Cyan}Setting backup directory...${Color_Off}"
