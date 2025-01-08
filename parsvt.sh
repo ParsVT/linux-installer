@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-10-09
+# Update: 1403-10-19
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -196,6 +196,17 @@ disableSELinux() {
 	fi
 }
 updatePackage() {
+	if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
+		if ! { [ "$major" = "9" ] || [ "$major" = "10" ]; }; then
+			set +e
+			output "\n${Cyan}Fixing deprecated CentOS repositories...${Color_Off}"
+			sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/CentOS-*.repo
+			sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/CentOS-*.repo
+			sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/CentOS-*.repo
+			output "${Green}Deprecated CentOS repositories successfully fixed!${Color_Off}"
+			set -e
+		fi
+	fi
 	if [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
 			if ! grep -rnwq "/etc/redhat-release" -e "Stream"; then
