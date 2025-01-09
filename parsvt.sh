@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-10-19
+# Update: 1403-10-20
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -198,13 +198,13 @@ disableSELinux() {
 updatePackage() {
 	if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
 		if ! { [ "$major" = "9" ] || [ "$major" = "10" ]; }; then
-			set +e
 			output "\n${Cyan}Fixing deprecated CentOS repositories...${Color_Off}"
+			set +e
 			sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/CentOS-*.repo
 			sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/CentOS-*.repo
 			sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/CentOS-*.repo
-			output "${Green}Deprecated CentOS repositories successfully fixed!${Color_Off}"
 			set -e
+			output "${Green}Deprecated CentOS repositories successfully fixed!${Color_Off}"
 		fi
 	fi
 	if [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
@@ -326,15 +326,22 @@ SetRequirements() {
 	sed -i -e 's/session.cookie_secure = 1/;session.cookie_secure =/g' $PHPINI
 	sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
 	sed -i -e 's/;date.timezone =/date.timezone = "Asia\/Tehran"/g' $PHPINI
-	sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
-	set +e
-	sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
-	sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
-	sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
-	set -e
-	sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
-	if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "TimeOut"; then
-		sed -i '/Listen 80/a TimeOut 600' /etc/httpd/conf/httpd.conf
+	httpdfile="/etc/httpd/conf/httpd.conf"
+	if [ -f "$httpdfile" ]; then
+		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
+		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
+		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "TimeOut"; then
+			sed -i '/Listen 80/a TimeOut 600' /etc/httpd/conf/httpd.conf
+		fi
+	fi
+	sslfile="/etc/httpd/conf.d/ssl.conf"
+	if [ -f "$sslfile" ]; then
+		sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
+	fi
+	wwwfile="/etc/php-fpm.d/www.conf"
+	if [ -f "$wwwfile" ]; then
+		sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
+		sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
 	fi
 	restartApache
 	output "${Green}ParsVT requirements have been set!${Color_Off}\n"
@@ -564,12 +571,15 @@ if [ "$installationType" = "Install" ]; then
 		if [ "$major" = "8" ]; then
 			dnf config-manager --set-enabled powertools
 			dnf --enablerepo=remi,powertools install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
-		elif [ "$major" = "9" ] || [ "$major" = "10" ]; then
+		elif [ "$major" = "9" ]; then
 			dnf config-manager --set-enabled crb
 			dnf --enablerepo=remi,crb install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
 			set +e
 			dnf --enablerepo=remi,crb install epel-next-release -y
 			set -e
+		elif [ "$major" = "10" ]; then
+			dnf config-manager --set-enabled crb
+			dnf --enablerepo=remi,crb install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
 		else
 			yum --enablerepo=remi install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
 		fi
@@ -708,7 +718,10 @@ if [ "$installationType" = "Install" ]; then
 			else
 				yum install --enablerepo=remi --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
 			fi
-			wget -q http://$primarySite/modules/addons/easyservice/Installer/pma.txt -O /etc/httpd/conf.d/phpMyAdmin.conf
+			pmafile="/etc/httpd/conf.d/phpMyAdmin.conf"
+			if [ -f "$pmafile" ]; then
+				sed -i '/<Directory \/usr\/share\/phpMyAdmin\/>/,/<\/Directory>/ s/Require local/Require all granted/' /etc/httpd/conf.d/phpMyAdmin.conf
+			fi
 			DBPassword=$(date +%s | sha256sum | base64 | head -c 20)
 			output "MySQL Username: ${DBUSER}\nMySQL Password: ${DBPassword}" >/root/mysql.txt
 			restartDatabase
