@@ -226,25 +226,12 @@ updatePackage() {
 installPackage() {
 	output "\n${Cyan}Installing required packages...${Color_Off}"
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
+		dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata chrony -y
 	else
-		yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata -y
+		yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata ntp ntpdate ntp-doc -y
 	fi
 	if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		dnf install initscripts -y
-	fi
-	file="/etc/ntp.conf"
-	if [ ! -f "$file" ]; then
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			dnf install chrony -y
-			systemctl start chronyd
-			systemctl enable chronyd
-		else
-			yum install ntp ntpdate ntp-doc -y
-			ntpdate pool.ntp.org
-			systemctl start ntpd
-			systemctl enable ntpd
-		fi
 	fi
 	output "${Green}Required packages successfully installed!${Color_Off}\n"
 }
