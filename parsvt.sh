@@ -166,11 +166,11 @@ restartDatabase() {
 	fi
 }
 disableSELinux() {
-	output "\n${Cyan}Disabling SELinux...${Color_Off}"
 	STATUS=$(getenforce)
 	if [ "$STATUS" = "disabled" ] || [ "$STATUS" = "Disabled" ]; then
-		output "${Green}SELinux is already disabled!${Color_Off}"
+		output "\n${Green}SELinux is already disabled!${Color_Off}"
 	else
+		output "\n${Cyan}Disabling SELinux...${Color_Off}"
 		setenforce 0
 		sed -i -e 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 		sed -i -e 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
@@ -257,6 +257,28 @@ installIonCube() {
 	rm -rf ioncube_loaders_lin*.tar.gz*
 	cd /root
 	restartApache
+}
+InstallTimezonedb() {
+	if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
+		output "${Cyan}Installing timezonedb extension...${Color_Off}"
+		cd /root
+		mkdir -p timezonedb
+		cd timezonedb
+		getPHPConfigPath
+		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.2.tgz -O timezonedb-2024.2.tgz
+		pear install timezonedb-2024.2.tgz
+		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
+			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
+		fi
+		restartApache
+		date
+		hwclock
+		rm -rf /root/timezonedb*
+		cd /root
+		output "${Green}timezonedb extension successfully installed!${Color_Off}\n"
+	else
+		output "${Green}timezonedb extension is already installed!${Color_Off}\n"
+	fi
 }
 SetRequirements() {
 	output "${Cyan}Setting ParsVT requirements...${Color_Off}"
@@ -652,22 +674,7 @@ if [ "$installationType" = "Install" ]; then
 				exit
 			fi
 		fi
-		output "${Cyan}Installing timezonedb extension...${Color_Off}"
-		cd /root
-		mkdir -p timezonedb
-		cd timezonedb
-		getPHPConfigPath
-		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.2.tgz -O timezonedb-2024.2.tgz
-		pear install timezonedb-2024.2.tgz
-		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
-			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
-		fi
-		restartApache
-		date
-		hwclock
-		rm -rf /root/timezonedb*
-		cd /root
-		output "${Green}timezonedb extension successfully installed!${Color_Off}\n"
+		InstallTimezonedb
 		SetRequirements
 		if type mysql >/dev/null 2>&1; then
 			output "${Green}MySQL is already installed!${Color_Off}\n"
@@ -953,24 +960,7 @@ if [ "$installationType" = "Repair" ]; then
 		else
 			output "${Green}Apache is already installed!${Color_Off}\n"
 		fi
-		output "${Cyan}Installing timezonedb extension...${Color_Off}"
-		cd /root
-		mkdir -p timezonedb
-		cd timezonedb
-		getPHPConfigPath
-		set +e
-		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.2.tgz -O timezonedb-2024.2.tgz
-		pear install -f timezonedb-2024.2.tgz
-		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
-			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
-		fi
-		set -e
-		restartApache
-		date
-		hwclock
-		rm -rf /root/timezonedb*
-		cd /root
-		output "${Green}timezonedb extension successfully installed!${Color_Off}\n"
+		InstallTimezonedb
 		SetRequirements
 		if type mysql >/dev/null 2>&1; then
 			output "${Green}MySQL is already installed!${Color_Off}\n"
