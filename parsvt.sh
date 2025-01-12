@@ -3,17 +3,13 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-10-20
+# Update: 1403-10-23
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
 shecanProDNS2="185.51.200.1"
 shecanDNS1="178.22.122.100"
 shecanDNS2="185.51.200.2"
-googleDNS1="8.8.8.8"
-googleDNS2="8.8.4.4"
-cloudflareDNS1="1.1.1.1"
-cloudflareDNS2="1.0.0.1"
 Color_Off="\e[0m"
 Red="\e[0;31m"
 Green="\e[0;32m"
@@ -84,35 +80,21 @@ checkInternetConnection() {
 	fi
 }
 setDNS() {
-	echo -e "\nPlease enter the item number you want to use as DNS during installation:\n"
-	if [ "$installationType" = "Install" ]; then
-		echo -e "[${Cyan}1${Color_Off}] Shecan Pro (recommended)"
-	else
-		echo -e "[${Cyan}1${Color_Off}] Shecan (recommended)"
-	fi
-	echo -e "[${Cyan}2${Color_Off}] Google"
-	echo -e "[${Cyan}3${Color_Off}] Cloudflare"
-	echo -e "[${Yellow}4${Color_Off}] Continue without changing DNS\n"
-	read -p "Please select an item (1-4): " rundns
-	if [ "$rundns" == "1" ]; then
+	read -p "Do you want to use Shecan as DNS during installation? (y/n): " rundns
+	if [ "$rundns" = "y" ] || [ "$rundns" = "yes" ] || [ "$rundns" = "Y" ] || [ "$rundns" = "Yes" ] || [ "$rundns" = "YES" ] || [ "$rundns" = "1" ]; then
 		if [ "$installationType" = "Install" ]; then
 			shecanURI=$(echo -n "${RESPONSES[3]}" | base64 --decode)
 			curl -s -o /dev/null "${shecanURI}"
 			mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 			echo -e "nameserver ${shecanProDNS1}\nnameserver ${shecanProDNS2}\n" >/etc/resolv.conf
 			curl -s -o /dev/null "${shecanURI}"
+			echo -e "${Green}OK!${Color_Off}"
 		else
 			mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 			echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
 		fi
-	elif [ "$rundns" == "2" ]; then
-		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-		echo -e "nameserver ${googleDNS1}\nnameserver ${googleDNS2}\n" >/etc/resolv.conf
-	elif [ "$rundns" == "3" ]; then
-		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-		echo -e "nameserver ${cloudflareDNS1}\nnameserver ${cloudflareDNS2}\n" >/etc/resolv.conf
-	elif [ "$rundns" == "4" ]; then
-		echo -e "${Green}Done!${Color_Off}"
+	elif [ "$rundns" = "n" ] || [ "$rundns" = "no" ] || [ "$rundns" = "N" ] || [ "$rundns" = "No" ] || [ "$rundns" = "NO" ] || [ "$rundns" = "0" ]; then
+		echo -e "${Yellow}OK!${Color_Off}"
 	else
 		setDNS
 	fi
@@ -251,26 +233,20 @@ installPackage() {
 	if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		dnf install initscripts -y
 	fi
-	output "${Green}Required packages successfully installed!${Color_Off}\n"
-}
-installNTP() {
 	file="/etc/ntp.conf"
 	if [ ! -f "$file" ]; then
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			output "${Cyan}Installing Chrony...${Color_Off}"
 			dnf install chrony -y
 			systemctl start chronyd
 			systemctl enable chronyd
-			output "${Green}Chrony successfully installed!${Color_Off}\n"
 		else
-			output "${Cyan}Installing NTP...${Color_Off}"
 			yum install ntp ntpdate ntp-doc -y
 			ntpdate pool.ntp.org
 			systemctl start ntpd
 			systemctl enable ntpd
-			output "${Green}NTP successfully installed!${Color_Off}\n"
 		fi
 	fi
+	output "${Green}Required packages successfully installed!${Color_Off}\n"
 }
 installIonCube() {
 	cd /tmp
@@ -482,7 +458,7 @@ if [ "$installationType" = "Install" ]; then
 		fullname=$(cat /etc/redhat-release)
 		major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
 		ARCH=$(uname -m)
-		output "\n${Green}${fullname} ${ARCH}${Color_Off}"
+		output "${Green}${fullname} ${ARCH}${Color_Off}"
 		IPS=$(hostname --all-ip-addresses)
 		ipsarray=($IPS)
 		if [ -n "$ipsarray" ]; then
@@ -524,7 +500,7 @@ if [ "$installationType" = "Install" ]; then
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
 			exit
 		fi
-		output "\n${Green}${LICENSEKEY}${Color_Off} will be used as the license key."
+		output "\n${Green}${LICENSEKEY}${Color_Off} will be used as the license key.\n"
 		setDNS
 		disableSELinux
 		updatePackage
@@ -541,7 +517,6 @@ if [ "$installationType" = "Install" ]; then
 			fi
 			exit
 		fi
-		installNTP
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 			output "${Cyan}Installing Remi repository...${Color_Off}"
 			file="/etc/yum.repos.d/remi.repo"
@@ -893,7 +868,7 @@ if [ "$installationType" = "Repair" ]; then
 		fullname=$(cat /etc/redhat-release)
 		major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
 		ARCH=$(uname -m)
-		output "\n${Green}${fullname} ${ARCH}${Color_Off}"
+		output "${Green}${fullname} ${ARCH}${Color_Off}\n"
 		setDNS
 		disableSELinux
 		set +e
@@ -912,9 +887,6 @@ if [ "$installationType" = "Repair" ]; then
 			fi
 			exit
 		fi
-		set +e
-		installNTP
-		set -e
 		file="/etc/yum.repos.d/remi.repo"
 		if [ ! -f "$file" ]; then
 			output "${Red}Remi repository is not installed!${Color_Off}"
@@ -1056,7 +1028,7 @@ if [ "$installationType" = "ionCube" ]; then
 			fullname=$(cat /etc/redhat-release)
 			major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
 			ARCH=$(uname -m)
-			output "\n${Green}${fullname} ${ARCH}${Color_Off}"
+			output "${Green}${fullname} ${ARCH}${Color_Off}\n"
 		fi
 		setDNS
 		set +e
@@ -1150,7 +1122,7 @@ if [ "$installationType" = "clamAV" ]; then
 			fullname=$(cat /etc/redhat-release)
 			major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
 			ARCH=$(uname -m)
-			output "\n${Green}${fullname} ${ARCH}${Color_Off}"
+			output "${Green}${fullname} ${ARCH}${Color_Off}\n"
 		fi
 		setDNS
 		set +e
