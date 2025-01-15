@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-10-23
+# Update: 1403-10-26
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -18,7 +18,6 @@ Blue="\e[0;34m"
 Purple="\e[0;35m"
 Cyan="\e[0;36m"
 primarySite="aweb.co"
-secondarySite="files.aweb.asia"
 ETH_DEV="127.0.0.1"
 IP=$(ifconfig eth0 2>/dev/null | awk '/inet addr:/ {print $2}' | sed 's/addr://')
 INSTALLTYPE="Fresh"
@@ -35,6 +34,7 @@ adminPWD="123456789"
 mysqlPWD="123456789"
 INTERNET_STATUS="DOWN"
 installationType="Install"
+JavaVersion="431"
 output() {
 	echo -e "$1"
 }
@@ -259,12 +259,12 @@ installIonCube() {
 	restartApache
 }
 InstallTimezonedb() {
+	getPHPConfigPath
 	if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 		output "${Cyan}Installing timezonedb extension...${Color_Off}"
 		cd /root
 		mkdir -p timezonedb
 		cd timezonedb
-		getPHPConfigPath
 		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.2.tgz -O timezonedb-2024.2.tgz
 		pear install timezonedb-2024.2.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
@@ -332,28 +332,66 @@ SetRequirements() {
 	output "${Green}ParsVT requirements have been set!${Color_Off}\n"
 }
 installJava() {
-	if java -version 2>&1 >/dev/null | grep -q "java version"; then
+	if java -version 2>&1 >/dev/null | grep -q "java version \"1.8.0_$JavaVersion\""; then
 		output "${Green}Java libraries are already installed!${Color_Off}\n"
 	else
-		output "${Cyan}Installing Java libraries...${Color_Off}"
-		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			if [ "$ARCH" = "x86_64" ]; then
-				dnf install http://$secondarySite/JAVA/jdk-8u431-linux-x64.rpm -y
-				dnf install http://$secondarySite/JAVA/jre-8u431-linux-x64.rpm -y
+		if java -version 2>&1 >/dev/null | grep -q "java version"; then
+			output "${Cyan}Updating Java libraries...${Color_Off}"
+			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
+				if [ "$ARCH" = "x86_64" ]; then
+					dnf install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
+					dnf install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
+				else
+					dnf install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
+					dnf install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
+				fi
 			else
-				dnf install http://$secondarySite/JAVA/jdk-8u431-linux-i586.rpm -y
-				dnf install http://$secondarySite/JAVA/jre-8u431-linux-i586.rpm -y
+				if [ "$ARCH" = "x86_64" ]; then
+					yum install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
+					yum install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
+				else
+					yum install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
+					yum install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
+				fi
+			fi
+			if java -version 2>&1 >/dev/null | grep -q "java version \"1.8.0_$JavaVersion\""; then
+				output "${Green}Java libraries successfully updated!${Color_Off}\n"
+			else
+				output "${Red}Java libraries failed to update!${Color_Off}"
+				output "You have to update JDK and JRE manually."
+				output "\n${Red}The operation aborted!${Color_Off}"
+				output "${Yellow}www.parsvt.com${Color_Off}\n"
+				exit
 			fi
 		else
-			if [ "$ARCH" = "x86_64" ]; then
-				yum install http://$secondarySite/JAVA/jdk-8u431-linux-x64.rpm -y
-				yum install http://$secondarySite/JAVA/jre-8u431-linux-x64.rpm -y
+			output "${Cyan}Installing Java libraries...${Color_Off}"
+			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
+				if [ "$ARCH" = "x86_64" ]; then
+					dnf install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
+					dnf install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
+				else
+					dnf install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
+					dnf install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
+				fi
 			else
-				yum install http://$secondarySite/JAVA/jdk-8u431-linux-i586.rpm -y
-				yum install http://$secondarySite/JAVA/jre-8u431-linux-i586.rpm -y
+				if [ "$ARCH" = "x86_64" ]; then
+					yum install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
+					yum install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
+				else
+					yum install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
+					yum install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
+				fi
+			fi
+			if java -version 2>&1 >/dev/null | grep -q "java version \"1.8.0_$JavaVersion\""; then
+				output "${Green}Java libraries successfully installed!${Color_Off}\n"
+			else
+				output "${Red}Java libraries failed to install!${Color_Off}"
+				output "You have to install JDK and JRE 1.8 or higher manually."
+				output "\n${Red}The operation aborted!${Color_Off}"
+				output "${Yellow}www.parsvt.com${Color_Off}\n"
+				exit
 			fi
 		fi
-		output "${Green}Java libraries successfully installed!${Color_Off}\n"
 	fi
 }
 openPorts() {
