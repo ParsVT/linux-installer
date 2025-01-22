@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-10-26
+# Update: 1403-11-03
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -44,8 +44,9 @@ startInstallation() {
 	echo -e "[${Cyan}2${Color_Off}] ${Cyan}Repair server configurations${Color_Off}"
 	echo -e "[${Cyan}3${Color_Off}] ${Cyan}Update ionCube loader${Color_Off}"
 	echo -e "[${Cyan}4${Color_Off}] ${Cyan}Install ClamAV (not recommended for low end servers)${Color_Off}"
-	echo -e "[${Yellow}5${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
-	read -p "Please select an action (1-5): " run
+	echo -e "[${Cyan}5${Color_Off}] ${Cyan}Install SSL certificate${Color_Off}"
+	echo -e "[${Yellow}6${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
+	read -p "Please select an action (1-6): " run
 	if [ "$run" == "1" ]; then
 		installationType="Install"
 	elif [ "$run" == "2" ]; then
@@ -55,6 +56,8 @@ startInstallation() {
 	elif [ "$run" == "4" ]; then
 		installationType="clamAV"
 	elif [ "$run" == "5" ]; then
+		installationType="SSL"
+	elif [ "$run" == "6" ]; then
 		echo -e "\n${Red}The operation aborted!${Color_Off}"
 		echo -e "${Yellow}www.parsvt.com${Color_Off}\n"
 		exit
@@ -137,7 +140,7 @@ setAdminPassword() {
 }
 removeMySQL() {
 	MYSQLFOLDER="/var/lib/mysql"
-	if [ -f "$MYSQLFOLDER" ]; then
+	if [ -d "$MYSQLFOLDER" ]; then
 		dt=$(date '+%d-%m-%Y_%H-%M-%S')
 		mv /var/lib/mysql /var/lib/old_backup_mysql_"$dt"
 	fi
@@ -262,7 +265,8 @@ InstallTimezonedb() {
 	getPHPConfigPath
 	if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 		output "${Cyan}Installing timezonedb extension...${Color_Off}"
-		cd /root
+		cd /tmp
+		rm -rf timezonedb*
 		mkdir -p timezonedb
 		cd timezonedb
 		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.2.tgz -O timezonedb-2024.2.tgz
@@ -270,11 +274,11 @@ InstallTimezonedb() {
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
 		fi
+		rm -rf timezonedb*
+		cd /root
 		restartApache
 		date
 		hwclock
-		rm -rf /root/timezonedb*
-		cd /root
 		output "${Green}timezonedb extension successfully installed!${Color_Off}\n"
 	else
 		output "${Green}timezonedb extension is already installed!${Color_Off}\n"
@@ -473,6 +477,26 @@ mysqlConnection() {
 		mysqlConnection
 	fi
 }
+SSLDomain() {
+	read -p "Please enter your domain name (example.com): " domain
+	staticip=$(wget -O- -q http://aweb.co/ip.php)
+	read -p "Are you sure you have created a DNS (A record) to connect the domain $(tput bold)${domain}$(tput sgr0) to the static IP $(tput bold)${staticip}$(tput sgr0)? (y/n): " confirmdomain
+	if [ "$confirmdomain" = "y" ] || [ "$confirmdomain" = "yes" ] || [ "$confirmdomain" = "Y" ] || [ "$confirmdomain" = "Yes" ] || [ "$confirmdomain" = "YES" ] || [ "$confirmdomain" = "1" ]; then
+		if [ ! -L "/var/www/$domain" ]; then
+			ln -s /var/www/html /var/www/$domain
+		fi
+		wget -q http://$primarySite/modules/addons/easyservice/Installer/domain.txt -O /etc/httpd/conf.d/$domain.conf
+		sed -i -e "s/example.com/$domain/g" /etc/httpd/conf.d/$domain.conf
+		restartApache
+		certbot --apache -d $domain
+		certbot renew --dry-run
+		grep "python -c 'import random; import time; time.sleep(random.random() * 3600)' && certbot renew" /var/spool/cron/root || echo "0 0,12 * * * python -c 'import random; import time; time.sleep(random.random() * 3600)' && certbot renew" >>/var/spool/cron/root
+		restartApache
+		output "${Green}SSL certificate successfully installed!${Color_Off}\n"
+	else
+		SSLDomain
+	fi
+}
 function string_replace {
 	echo "${1/\/\//$2}"
 }
@@ -482,9 +506,10 @@ echo -e "██████  ███████ ██████  ███
 echo -e "██      ██   ██ ██   ██      ██  ██  ██     ██   "
 echo -e "██      ██   ██ ██   ██ ███████   ████      ██   \n"
 echo -e "Shell script to install ParsVT CRM on Linux."
-echo -e "Please run as root. if you are not, enter '5' now and enter 'sudo su' before running the script.${Color_Off}"
+echo -e "Please run as root. if you are not, enter '6' now and enter 'sudo su' before running the script.${Color_Off}"
 startInstallation
 restoreDNS
+cd /root
 if [ "$installationType" = "Install" ]; then
 	if [ -e /var/www/html/config.inc.php ]; then
 		output "\n${Red}VtigerCRM already exists!${Color_Off}"
@@ -559,9 +584,7 @@ if [ "$installationType" = "Install" ]; then
 			output "Please check the server's internet connection and DNS settings and run the installer again."
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
+			restoreDNS
 			exit
 		fi
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
@@ -612,9 +635,7 @@ if [ "$installationType" = "Install" ]; then
 			output "Please check the server's internet connection and DNS settings and run the installer again."
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
+			restoreDNS
 			exit
 		fi
 		if ! command -v "php" &>/dev/null; then
@@ -663,7 +684,6 @@ if [ "$installationType" = "Install" ]; then
 			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'5.6.0','>')) echo 'Ok'; else echo 'Failed';")
 			PHP_VERSION=$(php -r "echo PHP_VERSION;")
 			if [ "$PHP_VER" = "Ok" ]; then
-				cd /root
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
 				output "Checking the ionCube loader version..."
 				wget -q http://$primarySite/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
@@ -691,9 +711,7 @@ if [ "$installationType" = "Install" ]; then
 					output "${Red}ionCube loader version must be greater than 10.0.0${Color_Off}"
 					output "\n${Red}The operation aborted!${Color_Off}"
 					output "${Yellow}www.parsvt.com${Color_Off}\n"
-					if [ "$rundns" != "5" ]; then
-						restoreDNS
-					fi
+					restoreDNS
 					exit
 				else
 					output "ionCube loader is not installed!"
@@ -706,9 +724,7 @@ if [ "$installationType" = "Install" ]; then
 				output "${Red}PHP version must be greater than 5.5${Color_Off}"
 				output "\n${Red}The operation aborted!${Color_Off}"
 				output "${Yellow}www.parsvt.com${Color_Off}\n"
-				if [ "$rundns" != "5" ]; then
-					restoreDNS
-				fi
+				restoreDNS
 				exit
 			fi
 		fi
@@ -914,9 +930,7 @@ if [ "$installationType" = "Repair" ]; then
 			output "Please check the server's internet connection and DNS settings and run the script again."
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
+			restoreDNS
 			exit
 		fi
 		file="/etc/yum.repos.d/remi.repo"
@@ -924,9 +938,7 @@ if [ "$installationType" = "Repair" ]; then
 			output "${Red}Remi repository is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
+			restoreDNS
 			exit
 		else
 			output "${Green}Remi repository is already installed!${Color_Off}\n"
@@ -935,9 +947,7 @@ if [ "$installationType" = "Repair" ]; then
 			output "${Red}PHP is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
+			restoreDNS
 			exit
 		else
 			output "${Green}PHP is already installed!${Color_Off}\n"
@@ -945,7 +955,6 @@ if [ "$installationType" = "Repair" ]; then
 			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'5.6.0','>')) echo 'Ok'; else echo 'Failed';")
 			PHP_VERSION=$(php -r "echo PHP_VERSION;")
 			if [ "$PHP_VER" = "Ok" ]; then
-				cd /root
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
 				output "Checking the ionCube loader version..."
 				wget -q http://$primarySite/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
@@ -966,9 +975,7 @@ if [ "$installationType" = "Repair" ]; then
 					output "${Red}ionCube loader version must be greater than 10.0.0${Color_Off}"
 					output "\n${Red}The operation aborted!${Color_Off}"
 					output "${Yellow}www.parsvt.com${Color_Off}\n"
-					if [ "$rundns" != "5" ]; then
-						restoreDNS
-					fi
+					restoreDNS
 					exit
 				else
 					output "ionCube loader is not installed!"
@@ -981,9 +988,7 @@ if [ "$installationType" = "Repair" ]; then
 				output "${Red}PHP version must be greater than 5.5${Color_Off}"
 				output "\n${Red}The operation aborted!${Color_Off}"
 				output "${Yellow}www.parsvt.com${Color_Off}\n"
-				if [ "$rundns" != "5" ]; then
-					restoreDNS
-				fi
+				restoreDNS
 				exit
 			fi
 		fi
@@ -991,9 +996,7 @@ if [ "$installationType" = "Repair" ]; then
 			output "${Red}Apache is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
+			restoreDNS
 			exit
 		else
 			output "${Green}Apache is already installed!${Color_Off}\n"
@@ -1006,9 +1009,7 @@ if [ "$installationType" = "Repair" ]; then
 			output "${Red}MySQL is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
+			restoreDNS
 			exit
 		fi
 		installJava
@@ -1047,6 +1048,7 @@ if [ "$installationType" = "ionCube" ]; then
 		fi
 		setDNS
 		set +e
+		updatePackage
 		installPackage
 		set -e
 		wgetfile="/usr/bin/wget"
@@ -1056,18 +1058,14 @@ if [ "$installationType" = "ionCube" ]; then
 			output "Please check the server's internet connection and DNS settings and run the installer again."
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
+			restoreDNS
 			exit
 		fi
 		if ! command -v "php" &>/dev/null; then
 			output "${Red}PHP is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
+			restoreDNS
 			exit
 		else
 			output "${Green}PHP is already installed!${Color_Off}\n"
@@ -1075,7 +1073,6 @@ if [ "$installationType" = "ionCube" ]; then
 			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'5.6.0','>')) echo 'Ok'; else echo 'Failed';")
 			PHP_VERSION=$(php -r "echo PHP_VERSION;")
 			if [ "$PHP_VER" = "Ok" ]; then
-				cd /root
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
 				output "Checking the ionCube loader version..."
 				wget -q http://$primarySite/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
@@ -1086,9 +1083,7 @@ if [ "$installationType" = "ionCube" ]; then
 				rm -rf /root/IC.php*
 				if [ "$IONCUBE_VER" = "Ok" ]; then
 					output "Current ionCube loader version: ${Green}${IONCUBE_VERSION}${Color_Off}\n"
-					if [ "$rundns" != "5" ]; then
-						restoreDNS
-					fi
+					restoreDNS
 					exit
 				elif [ "$IONCUBE_VER" = "Upgrade" ]; then
 					output "Current ionCube loader version: ${Red}${IONCUBE_VERSION}${Color_Off}"
@@ -1100,9 +1095,7 @@ if [ "$installationType" = "ionCube" ]; then
 					output "${Red}ionCube loader version must be greater than 10.0.0${Color_Off}"
 					output "\n${Red}The operation aborted!${Color_Off}"
 					output "${Yellow}www.parsvt.com${Color_Off}\n"
-					if [ "$rundns" != "5" ]; then
-						restoreDNS
-					fi
+					restoreDNS
 					exit
 				else
 					output "ionCube loader is not installed!"
@@ -1115,9 +1108,7 @@ if [ "$installationType" = "ionCube" ]; then
 				output "${Red}PHP version must be greater than 5.5${Color_Off}"
 				output "\n${Red}The operation aborted!${Color_Off}"
 				output "${Yellow}www.parsvt.com${Color_Off}\n"
-				if [ "$rundns" != "5" ]; then
-					restoreDNS
-				fi
+				restoreDNS
 				exit
 			fi
 		fi
@@ -1151,9 +1142,7 @@ if [ "$installationType" = "clamAV" ]; then
 			output "Please check the server's internet connection and DNS settings and run the installer again."
 			output "\n${Red}The operation aborted!${Color_Off}"
 			output "${Yellow}www.parsvt.com${Color_Off}\n"
-			if [ "$rundns" != "5" ]; then
-				restoreDNS
-			fi
+			restoreDNS
 			exit
 		fi
 		output "${Cyan}Installing ClamAV...${Color_Off}"
@@ -1177,6 +1166,63 @@ if [ "$installationType" = "clamAV" ]; then
 		output "${Green}ClamAV successfully installed!${Color_Off}\n"
 	fi
 fi
-if [ "$rundns" != "5" ]; then
-	restoreDNS
+if [ "$installationType" = "SSL" ]; then
+	if [ ! -f "/var/www/html/config.inc.php" ]; then
+		output "\n${Red}VtigerCRM is not installed!${Color_Off}"
+		output "\n${Red}The operation aborted!${Color_Off}"
+		output "${Yellow}www.parsvt.com${Color_Off}\n"
+		exit
+	fi
+	checkInternetConnection
+	if [ ! -f "/etc/redhat-release" ]; then
+		output "\n${Red}Operating system is not supported!${Color_Off}"
+		output "ClamAV installer only installs on CentOS and RHEL-based Linuxes."
+		output "You have to install ClamAV manually."
+		output "\n${Red}The operation aborted!${Color_Off}"
+		output "${Yellow}www.parsvt.com${Color_Off}\n"
+		exit
+	else
+		if [ -f "/etc/redhat-release" ]; then
+			fullname=$(cat /etc/redhat-release)
+			major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
+			ARCH=$(uname -m)
+			output "${Green}${fullname} ${ARCH}${Color_Off}\n"
+		fi
+		setDNS
+		set +e
+		updatePackage
+		installPackage
+		set -e
+		wgetfile="/usr/bin/wget"
+		curlfile="/usr/bin/curl"
+		if [ ! -f "$wgetfile" ] || [ ! -f "$curlfile" ]; then
+			output "${Red}required packages failed to install!${Color_Off}"
+			output "Please check the server's internet connection and DNS settings and run the installer again."
+			output "\n${Red}The operation aborted!${Color_Off}"
+			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			restoreDNS
+			exit
+		fi
+		output "${Cyan}Installing SSL certificate requirements...${Color_Off}"
+		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
+			dnf install epel-release -y
+			dnf install snapd -y
+			systemctl enable --now snapd.socket
+			if [ ! -L "/snap" ]; then
+				ln -s /var/lib/snapd/snap /snap
+			fi
+			dnf remove certbot -y
+			snap install --classic certbot
+			if [ ! -L "/usr/bin/certbot" ]; then
+				ln -s /snap/bin/certbot /usr/bin/certbot
+			fi
+		else
+			yum install epel-release -y
+			yum remove certbot -y
+			yum install mod_ssl python-certbot-apache certbot -y
+		fi
+		output "${Green}SSL certificate requirements successfully installed!${Color_Off}\n"
+		SSLDomain
+	fi
 fi
+restoreDNS
