@@ -408,6 +408,7 @@ openPorts() {
 		firewall-cmd --zone=public --permanent --add-service=imaps
 		firewall-cmd --zone=public --permanent --add-service=ssh
 		firewall-cmd --zone=public --permanent --add-service=smtp
+		firewall-cmd --zone=public --permanent --add-service=ntp
 		firewall-cmd --zone=public --permanent --add-port=80/tcp
 		firewall-cmd --zone=public --permanent --add-port=443/tcp
 		firewall-cmd --zone=public --permanent --add-port=143/tcp
