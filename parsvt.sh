@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-11-03
+# Update: 1403-11-16
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -200,41 +200,41 @@ updatePackage() {
 				dnf distro-sync -y
 				output "${Green}CentOS successfully converted!${Color_Off}\n"
 				output "${Cyan}Updating installed packages...${Color_Off}"
-				yum install dnf -y
-				dnf update -y
+				yum install --skip-broken dnf -y
+				dnf update --skip-broken --nobest -y
 				output "${Green}Installed packages successfully updated!${Color_Off}"
 			else
 				output "\n${Cyan}Updating installed packages...${Color_Off}"
-				yum install dnf -y
-				dnf update -y
+				yum install --skip-broken dnf -y
+				dnf update --skip-broken --nobest -y
 				output "${Green}Installed packages successfully updated!${Color_Off}"
 			fi
 		else
 			output "\n${Cyan}Updating installed packages...${Color_Off}"
-			yum install dnf -y
-			dnf update -y
+			yum install --skip-broken dnf -y
+			dnf update --skip-broken --nobest -y
 			output "${Green}Installed packages successfully updated!${Color_Off}"
 		fi
 	elif [ "$major" = "7" ]; then
 		output "\n${Cyan}Updating installed packages...${Color_Off}"
-		yum install dnf -y
-		dnf update -y
+		yum install --skip-broken dnf -y
+		dnf update --skip-broken --nobest -y
 		output "${Green}Installed packages successfully updated!${Color_Off}"
 	else
 		output "\n${Cyan}Updating installed packages...${Color_Off}"
-		yum update -y
+		yum update --skip-broken --nobest -y
 		output "${Green}Installed packages successfully updated!${Color_Off}"
 	fi
 }
 installPackage() {
 	output "\n${Cyan}Installing required packages...${Color_Off}"
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		dnf install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata chrony -y
+		dnf install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata chrony -y
 	else
-		yum install wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata ntp ntpdate ntp-doc -y
+		yum install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata ntp ntpdate ntp-doc -y
 	fi
 	if [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		dnf install initscripts -y
+		dnf install --skip-broken initscripts -y
 	fi
 	output "${Green}Required packages successfully installed!${Color_Off}\n"
 }
@@ -343,19 +343,19 @@ installJava() {
 			output "${Cyan}Updating Java libraries...${Color_Off}"
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 				if [ "$ARCH" = "x86_64" ]; then
-					dnf install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
-					dnf install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
+					dnf install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
+					dnf install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
 				else
-					dnf install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
-					dnf install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
+					dnf install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
+					dnf install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
 				fi
 			else
 				if [ "$ARCH" = "x86_64" ]; then
-					yum install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
-					yum install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
+					yum install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
+					yum install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
 				else
-					yum install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
-					yum install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
+					yum install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
+					yum install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
 				fi
 			fi
 			if java -version 2>&1 >/dev/null | grep -q "java version \"1.8.0_$JavaVersion\""; then
@@ -371,19 +371,19 @@ installJava() {
 			output "${Cyan}Installing Java libraries...${Color_Off}"
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 				if [ "$ARCH" = "x86_64" ]; then
-					dnf install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
-					dnf install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
+					dnf install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
+					dnf install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
 				else
-					dnf install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
-					dnf install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
+					dnf install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
+					dnf install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
 				fi
 			else
 				if [ "$ARCH" = "x86_64" ]; then
-					yum install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
-					yum install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
+					yum install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
+					yum install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
 				else
-					yum install http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
-					yum install http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
+					yum install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
+					yum install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
 				fi
 			fi
 			if java -version 2>&1 >/dev/null | grep -q "java version \"1.8.0_$JavaVersion\""; then
@@ -480,7 +480,7 @@ mysqlConnection() {
 }
 SSLDomain() {
 	read -p "Please enter your domain name (example.com): " domain
-	staticip=$(wget -O- -q http://aweb.co/ip.php)
+	staticip=$(wget -O- -q "http://$primarySite/ip.php")
 	read -p "Are you sure you have created a DNS (A record) to connect the domain $(tput bold)${domain}$(tput sgr0) to the static IP $(tput bold)${staticip}$(tput sgr0)? (y/n): " confirmdomain
 	if [ "$confirmdomain" = "y" ] || [ "$confirmdomain" = "yes" ] || [ "$confirmdomain" = "Y" ] || [ "$confirmdomain" = "Yes" ] || [ "$confirmdomain" = "YES" ] || [ "$confirmdomain" = "1" ]; then
 		if [ ! -L "/var/www/$domain" ]; then
@@ -598,36 +598,36 @@ if [ "$installationType" = "Install" ]; then
 				if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 					dnf config-manager --set-enabled crb
 				fi
-				dnf install http://$primarySite/modules/addons/easyservice/Installer/epel-release-latest-$major.noarch.rpm -y
+				dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/epel-release-latest-$major.noarch.rpm -y
 				if [ "$major" = "9" ]; then
 					set +e
-					dnf install http://$primarySite/modules/addons/easyservice/Installer/epel-next-release-latest-$major.noarch.rpm -y
+					dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/epel-next-release-latest-$major.noarch.rpm -y
 					set -e
 				fi
-				dnf install http://$primarySite/modules/addons/easyservice/Installer/remi-release-$major.rpm -y
+				dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/remi-release-$major.rpm -y
 			fi
 		else
 			output "${Cyan}Installing Remi repository...${Color_Off}"
 			file="/etc/yum.repos.d/remi.repo"
 			if [ ! -f "$file" ]; then
-				yum install http://$primarySite/modules/addons/easyservice/Installer/epel-release-latest-$major.noarch.rpm -y
-				yum install http://$primarySite/modules/addons/easyservice/Installer/remi-release-$major.rpm -y
+				yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/epel-release-latest-$major.noarch.rpm -y
+				yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/remi-release-$major.rpm -y
 			fi
 		fi
 		if [ "$major" = "8" ]; then
 			dnf config-manager --set-enabled powertools
-			dnf --enablerepo=remi,powertools install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
+			dnf install --enablerepo=remi,powertools --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
 		elif [ "$major" = "9" ]; then
 			dnf config-manager --set-enabled crb
-			dnf --enablerepo=remi,crb install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
+			dnf install --enablerepo=remi,crb --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
 			set +e
-			dnf --enablerepo=remi,crb install epel-next-release -y
+			dnf install --enablerepo=remi,crb --skip-broken epel-next-release -y
 			set -e
 		elif [ "$major" = "10" ]; then
 			dnf config-manager --set-enabled crb
-			dnf --enablerepo=remi,crb install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
+			dnf install --enablerepo=remi,crb --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
 		else
-			yum --enablerepo=remi install epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
+			yum install --enablerepo=remi --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
 		fi
 		output "${Green}Remi repository successfully installed!${Color_Off}\n"
 		file="/etc/yum.repos.d/remi.repo"
@@ -869,11 +869,11 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			dnf install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.202-1.noarch.rpm -y
-			dnf install webmin -y
+			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.202-1.noarch.rpm -y
+			dnf install --skip-broken webmin -y
 		else
-			yum install http://$primarySite/modules/addons/easyservice/Installer/webmin-2.202-1.noarch.rpm -y
-			yum install webmin -y
+			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.202-1.noarch.rpm -y
+			yum install --skip-broken webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
 		openPorts
@@ -1148,11 +1148,11 @@ if [ "$installationType" = "clamAV" ]; then
 		fi
 		output "${Cyan}Installing ClamAV...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			dnf install epel-release -y
-			dnf install clamav clamav-update -y
+			dnf install --skip-broken epel-release -y
+			dnf install --skip-broken clamav clamav-update -y
 		else
-			yum install epel-release -y
-			yum install clamav clamav-update -y
+			yum install --skip-broken epel-release -y
+			yum install --skip-broken clamav clamav-update -y
 		fi
 		freshclam
 		mkdir -p /var/log/clamav
@@ -1206,8 +1206,8 @@ if [ "$installationType" = "SSL" ]; then
 		fi
 		output "${Cyan}Installing SSL certificate requirements...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			dnf install epel-release -y
-			dnf install snapd -y
+			dnf install --skip-broken epel-release -y
+			dnf install --skip-broken snapd -y
 			systemctl enable --now snapd.socket
 			if [ ! -L "/snap" ]; then
 				ln -s /var/lib/snapd/snap /snap
@@ -1218,9 +1218,9 @@ if [ "$installationType" = "SSL" ]; then
 				ln -s /snap/bin/certbot /usr/bin/certbot
 			fi
 		else
-			yum install epel-release -y
+			yum install --skip-broken epel-release -y
 			yum remove certbot -y
-			yum install mod_ssl python-certbot-apache certbot -y
+			yum install --skip-broken mod_ssl python-certbot-apache certbot -y
 		fi
 		output "${Green}SSL certificate requirements successfully installed!${Color_Off}\n"
 		SSLDomain
