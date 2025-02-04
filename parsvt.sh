@@ -201,28 +201,68 @@ updatePackage() {
 				output "${Green}CentOS successfully converted!${Color_Off}\n"
 				output "${Cyan}Updating installed packages...${Color_Off}"
 				yum install --skip-broken dnf -y
-				dnf update --skip-broken --nobest -y
+				if [ "$installationType" = "Install" ]; then
+					dnf update --skip-broken -y
+				else
+					if [ "$major" = "9" ] || [ "$major" = "10" ]; then
+						dnf update --skip-broken -y
+					else
+						dnf update --skip-broken --nobest -y
+					fi
+				fi
 				output "${Green}Installed packages successfully updated!${Color_Off}"
 			else
 				output "\n${Cyan}Updating installed packages...${Color_Off}"
 				yum install --skip-broken dnf -y
-				dnf update --skip-broken --nobest -y
+				if [ "$installationType" = "Install" ]; then
+					dnf update --skip-broken -y
+				else
+					if [ "$major" = "9" ] || [ "$major" = "10" ]; then
+						dnf update --skip-broken -y
+					else
+						dnf update --skip-broken --nobest -y
+					fi
+				fi
 				output "${Green}Installed packages successfully updated!${Color_Off}"
 			fi
 		else
 			output "\n${Cyan}Updating installed packages...${Color_Off}"
 			yum install --skip-broken dnf -y
-			dnf update --skip-broken --nobest -y
+			if [ "$installationType" = "Install" ]; then
+				dnf update --skip-broken -y
+			else
+				if [ "$major" = "9" ] || [ "$major" = "10" ]; then
+					dnf update --skip-broken -y
+				else
+					dnf update --skip-broken --nobest -y
+				fi
+			fi
 			output "${Green}Installed packages successfully updated!${Color_Off}"
 		fi
 	elif [ "$major" = "7" ]; then
 		output "\n${Cyan}Updating installed packages...${Color_Off}"
 		yum install --skip-broken dnf -y
-		dnf update --skip-broken --nobest -y
+		if [ "$installationType" = "Install" ]; then
+			dnf update --skip-broken -y
+		else
+			if [ "$major" = "9" ] || [ "$major" = "10" ]; then
+				dnf update --skip-broken -y
+			else
+				dnf update --skip-broken --nobest -y
+			fi
+		fi
 		output "${Green}Installed packages successfully updated!${Color_Off}"
 	else
 		output "\n${Cyan}Updating installed packages...${Color_Off}"
-		yum update --skip-broken --nobest -y
+		if [ "$installationType" = "Install" ]; then
+			yum update --skip-broken -y
+		else
+			if [ "$major" = "9" ] || [ "$major" = "10" ]; then
+				yum update --skip-broken -y
+			else
+				yum update --skip-broken --nobest -y
+			fi
+		fi
 		output "${Green}Installed packages successfully updated!${Color_Off}"
 	fi
 }
