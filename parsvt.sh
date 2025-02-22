@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-11-16
+# Update: 1403-12-04
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -91,7 +91,7 @@ setDNS() {
 			mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 			echo -e "nameserver ${shecanProDNS1}\nnameserver ${shecanProDNS2}\n" >/etc/resolv.conf
 			curl -s -o /dev/null "${shecanURI}"
-			echo -e "${Green}OK!${Color_Off}"
+			echo -e "${Green}DONE!${Color_Off}"
 		else
 			mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
 			echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
@@ -277,7 +277,7 @@ installIonCube() {
 	cd /root
 	restartApache
 }
-InstallTimezonedb() {
+installTimezonedb() {
 	getPHPConfigPath
 	if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 		output "${Cyan}Installing timezonedb extension...${Color_Off}"
@@ -300,7 +300,7 @@ InstallTimezonedb() {
 		output "${Green}timezonedb extension is already installed!${Color_Off}\n"
 	fi
 }
-SetRequirements() {
+setRequirements() {
 	output "${Cyan}Setting ParsVT requirements...${Color_Off}"
 	getPHPConfigPath
 	sed -i -e 's/max_execution_time = 30/max_execution_time = 600/g' $PHPINI
@@ -494,7 +494,24 @@ mysqlConnection() {
 		mysqlConnection
 	fi
 }
-SSLDomain() {
+sqlConf() {
+	read -p "Do you want to overwrite the MySQL/MariaDB configuration file with the suggested file? (y/n): " sqlconfig
+	if [ "$sqlconfig" = "y" ] || [ "$sqlconfig" = "yes" ] || [ "$sqlconfig" = "Y" ] || [ "$sqlconfig" = "Yes" ] || [ "$sqlconfig" = "YES" ] || [ "$sqlconfig" = "1" ]; then
+		if ! command -V "mariadb" &>/dev/null; then
+			mv -n /etc/my.cnf.d/disable_mysql_strict_mode.cnf /etc/my.cnf.d/disable_mysql_strict_mode.cnf.old
+			wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf2.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
+		else
+			mv -n /etc/my.cnf.d/disable_mysql_strict_mode.cnf /etc/my.cnf.d/disable_mysql_strict_mode.cnf.old
+			wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
+		fi
+		echo -e "${Green}DONE!${Color_Off}\n"
+	elif [ "$sqlconfig" = "n" ] || [ "$sqlconfig" = "no" ] || [ "$sqlconfig" = "N" ] || [ "$sqlconfig" = "No" ] || [ "$sqlconfig" = "NO" ] || [ "$sqlconfig" = "0" ]; then
+		echo -e "${Yellow}OK!${Color_Off}\n"
+	else
+		sqlConf
+	fi
+}
+sslDomain() {
 	read -p "Please enter your domain name (example.com): " domain
 	staticip=$(wget -O- -q "http://$primarySite/ip.php")
 	read -p "Are you sure you have created a DNS (A record) to connect the domain $(tput bold)${domain}$(tput sgr0) to the static IP $(tput bold)${staticip}$(tput sgr0)? (y/n): " confirmdomain
@@ -511,7 +528,7 @@ SSLDomain() {
 		restartApache
 		output "${Green}SSL certificate successfully installed!${Color_Off}\n"
 	else
-		SSLDomain
+		sslDomain
 	fi
 }
 function string_replace {
@@ -745,8 +762,8 @@ if [ "$installationType" = "Install" ]; then
 				exit
 			fi
 		fi
-		InstallTimezonedb
-		SetRequirements
+		installTimezonedb
+		setRequirements
 		if type mysql >/dev/null 2>&1; then
 			output "${Green}MySQL is already installed!${Color_Off}\n"
 			mysqlConnection
@@ -1018,10 +1035,11 @@ if [ "$installationType" = "Repair" ]; then
 		else
 			output "${Green}Apache is already installed!${Color_Off}\n"
 		fi
-		InstallTimezonedb
-		SetRequirements
+		installTimezonedb
+		setRequirements
 		if type mysql >/dev/null 2>&1; then
 			output "${Green}MySQL is already installed!${Color_Off}\n"
+			sqlConf
 		else
 			output "${Red}MySQL is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
@@ -1239,7 +1257,7 @@ if [ "$installationType" = "SSL" ]; then
 			yum install --skip-broken mod_ssl python-certbot-apache certbot -y
 		fi
 		output "${Green}SSL certificate requirements successfully installed!${Color_Off}\n"
-		SSLDomain
+		sslDomain
 	fi
 fi
 restoreDNS
