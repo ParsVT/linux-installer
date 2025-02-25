@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-12-04
+# Update: 1403-12-07
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -495,20 +495,23 @@ mysqlConnection() {
 	fi
 }
 sqlConf() {
-	read -p "Do you want to overwrite the MySQL/MariaDB configuration file with the suggested file? (y/n): " sqlconfig
-	if [ "$sqlconfig" = "y" ] || [ "$sqlconfig" = "yes" ] || [ "$sqlconfig" = "Y" ] || [ "$sqlconfig" = "Yes" ] || [ "$sqlconfig" = "YES" ] || [ "$sqlconfig" = "1" ]; then
-		if ! command -V "mariadb" &>/dev/null; then
-			mv -n /etc/my.cnf.d/disable_mysql_strict_mode.cnf /etc/my.cnf.d/disable_mysql_strict_mode.cnf.old
-			wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf2.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
+	if [ ! -f "/etc/my.cnf.d/disable_mysql_strict_mode.cnf.old" ]; then
+		read -p "Do you want to overwrite the MySQL/MariaDB configuration file with the suggested file? (y/n): " sqlconfig
+		if [ "$sqlconfig" = "y" ] || [ "$sqlconfig" = "yes" ] || [ "$sqlconfig" = "Y" ] || [ "$sqlconfig" = "Yes" ] || [ "$sqlconfig" = "YES" ] || [ "$sqlconfig" = "1" ]; then
+			if ! command -V "mariadb" &>/dev/null; then
+				mv -n /etc/my.cnf.d/disable_mysql_strict_mode.cnf /etc/my.cnf.d/disable_mysql_strict_mode.cnf.old
+				wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf2.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
+			else
+				mv -n /etc/my.cnf.d/disable_mysql_strict_mode.cnf /etc/my.cnf.d/disable_mysql_strict_mode.cnf.old
+				wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
+			fi
+			restartDatabase
+			echo -e "${Green}DONE!${Color_Off}\n"
+		elif [ "$sqlconfig" = "n" ] || [ "$sqlconfig" = "no" ] || [ "$sqlconfig" = "N" ] || [ "$sqlconfig" = "No" ] || [ "$sqlconfig" = "NO" ] || [ "$sqlconfig" = "0" ]; then
+			echo -e "${Yellow}OK!${Color_Off}\n"
 		else
-			mv -n /etc/my.cnf.d/disable_mysql_strict_mode.cnf /etc/my.cnf.d/disable_mysql_strict_mode.cnf.old
-			wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
+			sqlConf
 		fi
-		echo -e "${Green}DONE!${Color_Off}\n"
-	elif [ "$sqlconfig" = "n" ] || [ "$sqlconfig" = "no" ] || [ "$sqlconfig" = "N" ] || [ "$sqlconfig" = "No" ] || [ "$sqlconfig" = "NO" ] || [ "$sqlconfig" = "0" ]; then
-		echo -e "${Yellow}OK!${Color_Off}\n"
-	else
-		sqlConf
 	fi
 }
 sslDomain() {
