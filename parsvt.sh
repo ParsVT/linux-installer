@@ -496,7 +496,7 @@ mysqlConnection() {
 }
 sqlConf() {
 	if [ ! -f "/etc/my.cnf.d/disable_mysql_strict_mode.cnf.old" ]; then
-		read -p "Do you want to overwrite the MySQL/MariaDB configuration file with the suggested file? (y/n): " sqlconfig
+		read -p "Do you want to overwrite the MySQL configuration file with the suggested file? (y/n): " sqlconfig
 		if [ "$sqlconfig" = "y" ] || [ "$sqlconfig" = "yes" ] || [ "$sqlconfig" = "Y" ] || [ "$sqlconfig" = "Yes" ] || [ "$sqlconfig" = "YES" ] || [ "$sqlconfig" = "1" ]; then
 			if command -V "mysql" &>/dev/null | grep -q "MariaDB"; then
 				mv -n /etc/my.cnf.d/disable_mysql_strict_mode.cnf /etc/my.cnf.d/disable_mysql_strict_mode.cnf.old
@@ -781,7 +781,7 @@ if [ "$installationType" = "Install" ]; then
 			mysqlConnection
 		else
 			removeMySQL
-			output "${Cyan}Installing MySQL/MariaDB...${Color_Off}"
+			output "${Cyan}Installing MySQL (MariaDB)...${Color_Off}"
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 				dnf install --enablerepo=remi --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
 			else
@@ -851,7 +851,7 @@ expect eof
 			echo "$SECURE_MYSQL"
 			wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
 			restartDatabase
-			output "${Green}MySQL/MariaDB successfully installed!${Color_Off}\n"
+			output "${Green}MySQL (MariaDB) successfully installed!${Color_Off}\n"
 			output "${Cyan}Creating database...${Color_Off}"
 			mysql -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "CREATE DATABASE IF NOT EXISTS ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
 			mysql -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "ALTER DATABASE ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
