@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-12-19
+# Update: 1403-12-23
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -337,6 +337,12 @@ setRequirements() {
 		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
 		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "TimeOut"; then
 			sed -i '/Listen 80/a TimeOut 600' /etc/httpd/conf/httpd.conf
+		fi
+		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "ServerTokens"; then
+			sed -i '/TimeOut 600/a ServerTokens Prod' /etc/httpd/conf/httpd.conf
+		fi
+		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "ServerSignature"; then
+			sed -i '/ServerTokens Prod/a ServerSignature Off' /etc/httpd/conf/httpd.conf
 		fi
 	fi
 	sslfile="/etc/httpd/conf.d/ssl.conf"
