@@ -5,7 +5,7 @@ Shell script to install ParsVT CRM on Linux (CentOS and all RHEL-based).
 
 > Developers: Hamid Rabiei, Mohammad Hadadpour
 
-> All rights reserved for ParsVtiger
+> All rights reserved for ParsVT.com
 
 ## Usage
 ```bash
