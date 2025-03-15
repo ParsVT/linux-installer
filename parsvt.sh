@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-12-23
+# Update: 1403-12-25
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -504,7 +504,8 @@ sqlConf() {
 	if [ ! -f "/etc/my.cnf.d/disable_mysql_strict_mode.cnf.old" ]; then
 		read -p "Do you want to overwrite the MySQL configuration file with the suggested file? (y/n): " sqlconfig
 		if [ "$sqlconfig" = "y" ] || [ "$sqlconfig" = "yes" ] || [ "$sqlconfig" = "Y" ] || [ "$sqlconfig" = "Yes" ] || [ "$sqlconfig" = "YES" ] || [ "$sqlconfig" = "1" ]; then
-			if command -V "mariadb" &>/dev/null; then
+			CHECKMYSQL=$(mysql -V)
+			if ${CHECKMYSQL} | grep -q "MariaDB"; then
 				mv -n /etc/my.cnf.d/disable_mysql_strict_mode.cnf /etc/my.cnf.d/disable_mysql_strict_mode.cnf.old
 				wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
 				if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
