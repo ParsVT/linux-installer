@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1403-12-25
+# Update: 1404-01-16
 # #########################################
 set -e
 shecanProDNS1="178.22.122.101"
@@ -34,7 +34,7 @@ adminPWD="123456789"
 mysqlPWD="123456789"
 INTERNET_STATUS="DOWN"
 installationType="Install"
-JavaVersion="431"
+JavaVersion="441"
 output() {
 	echo -e "$1"
 }
@@ -285,8 +285,8 @@ installTimezonedb() {
 		rm -rf timezonedb*
 		mkdir -p timezonedb
 		cd timezonedb
-		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2024.2.tgz -O timezonedb-2024.2.tgz
-		pear install timezonedb-2024.2.tgz
+		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2025.2.tgz -O timezonedb-2025.2.tgz
+		pear install timezonedb-2025.2.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
 		fi
@@ -498,36 +498,6 @@ mysqlConnection() {
 	else
 		output "${Red}$mysqlresult${Color_Off}"
 		mysqlConnection
-	fi
-}
-sqlConf() {
-	if [ ! -f "/etc/my.cnf.d/disable_mysql_strict_mode.cnf.old" ]; then
-		read -p "Do you want to overwrite the MySQL configuration file with the suggested file? (y/n): " sqlconfig
-		if [ "$sqlconfig" = "y" ] || [ "$sqlconfig" = "yes" ] || [ "$sqlconfig" = "Y" ] || [ "$sqlconfig" = "Yes" ] || [ "$sqlconfig" = "YES" ] || [ "$sqlconfig" = "1" ]; then
-			CHECKMYSQL=$(mysql -V)
-			if ${CHECKMYSQL} | grep -q "MariaDB"; then
-				mv -n /etc/my.cnf.d/disable_mysql_strict_mode.cnf /etc/my.cnf.d/disable_mysql_strict_mode.cnf.old
-				wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
-				if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-					systemctl restart mariadb
-				else
-					service mariadb restart
-				fi
-			else
-				mv -n /etc/my.cnf.d/disable_mysql_strict_mode.cnf /etc/my.cnf.d/disable_mysql_strict_mode.cnf.old
-				wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf2.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
-				if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-					systemctl restart mysqld
-				else
-					service mysqld restart
-				fi
-			fi
-			echo -e "${Green}DONE!${Color_Off}\n"
-		elif [ "$sqlconfig" = "n" ] || [ "$sqlconfig" = "no" ] || [ "$sqlconfig" = "N" ] || [ "$sqlconfig" = "No" ] || [ "$sqlconfig" = "NO" ] || [ "$sqlconfig" = "0" ]; then
-			echo -e "${Yellow}OK!${Color_Off}\n"
-		else
-			sqlConf
-		fi
 	fi
 }
 sslDomain() {
@@ -921,10 +891,10 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.202-1.noarch.rpm -y
+			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.303-1.noarch.rpm -y
 			dnf install --skip-broken webmin -y
 		else
-			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.202-1.noarch.rpm -y
+			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.303-1.noarch.rpm -y
 			yum install --skip-broken webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
@@ -1058,7 +1028,6 @@ if [ "$installationType" = "Repair" ]; then
 		setRequirements
 		if type mysql >/dev/null 2>&1; then
 			output "${Green}MySQL is already installed!${Color_Off}\n"
-			sqlConf
 		else
 			output "${Red}MySQL is not installed!${Color_Off}"
 			output "\n${Red}The operation aborted!${Color_Off}"
