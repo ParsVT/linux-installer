@@ -3,11 +3,9 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1404-01-16
+# Update: 1404-01-17
 # #########################################
 set -e
-shecanProDNS1="178.22.122.101"
-shecanProDNS2="185.51.200.1"
 shecanDNS1="178.22.122.100"
 shecanDNS2="185.51.200.2"
 Color_Off="\e[0m"
@@ -85,17 +83,8 @@ checkInternetConnection() {
 setDNS() {
 	read -p "Do you want to use Shecan as DNS during installation? (y/n): " rundns
 	if [ "$rundns" = "y" ] || [ "$rundns" = "yes" ] || [ "$rundns" = "Y" ] || [ "$rundns" = "Yes" ] || [ "$rundns" = "YES" ] || [ "$rundns" = "1" ]; then
-		if [ "$installationType" = "Install" ]; then
-			shecanURI=$(echo -n "${RESPONSES[3]}" | base64 --decode)
-			curl -s -o /dev/null "${shecanURI}"
-			mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-			echo -e "nameserver ${shecanProDNS1}\nnameserver ${shecanProDNS2}\n" >/etc/resolv.conf
-			curl -s -o /dev/null "${shecanURI}"
-			echo -e "${Green}DONE!${Color_Off}"
-		else
-			mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-			echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
-		fi
+		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
+		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
 	elif [ "$rundns" = "n" ] || [ "$rundns" = "no" ] || [ "$rundns" = "N" ] || [ "$rundns" = "No" ] || [ "$rundns" = "NO" ] || [ "$rundns" = "0" ]; then
 		echo -e "${Yellow}OK!${Color_Off}"
 	else
