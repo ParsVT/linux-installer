@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1404-01-17
+# Update: 1404-02-16
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
