@@ -1058,11 +1058,6 @@ if [ "$installationType" = "ionCube" ]; then
 			ARCH=$(uname -m)
 			output "${Green}${fullname} ${ARCH}${Color_Off}\n"
 		fi
-		setDNS
-		set +e
-		updatePackage
-		installPackage
-		set -e
 		wgetfile="/usr/bin/wget"
 		curlfile="/usr/bin/curl"
 		if [ ! -f "$wgetfile" ] || [ ! -f "$curlfile" ]; then
