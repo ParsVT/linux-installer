@@ -1183,8 +1183,8 @@ if [ "$installationType" = "SSL" ]; then
 	checkInternetConnection
 	if [ ! -f "/etc/redhat-release" ]; then
 		output "\n${Red}Operating system is not supported!${Color_Off}"
-		output "ClamAV installer only installs on CentOS and RHEL-based Linuxes."
-		output "You have to install ClamAV manually."
+		output "SSL installer only installs on CentOS and RHEL-based Linuxes."
+		output "You have to install SSL manually."
 		output "\n${Red}The operation aborted!${Color_Off}"
 		output "${Yellow}www.parsvt.com${Color_Off}\n"
 		exit
