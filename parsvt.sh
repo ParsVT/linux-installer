@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1404-02-16
+# Update: 1404-05-04
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -32,7 +32,7 @@ adminPWD="123456789"
 mysqlPWD="123456789"
 INTERNET_STATUS="DOWN"
 installationType="Install"
-JavaVersion="441"
+JavaVersion="461"
 output() {
 	echo -e "$1"
 }
@@ -880,10 +880,10 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.303-1.noarch.rpm -y
+			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.402-1.noarch.rpm -y
 			dnf install --skip-broken webmin -y
 		else
-			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.303-1.noarch.rpm -y
+			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.402-1.noarch.rpm -y
 			yum install --skip-broken webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
