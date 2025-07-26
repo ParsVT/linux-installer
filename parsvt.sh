@@ -315,11 +315,11 @@ setRequirements() {
 	if ! grep -rnwq "$PHPINI" -e "default_socket_timeout = 600"; then
 		sed -i -e 's/default_socket_timeout = 60/default_socket_timeout = 600/g' $PHPINI
 	fi
+	sed -i -e 's/;date.timezone =/date.timezone = "Asia\/Tehran"/g' $PHPINI
 	sed -i -e 's/session.use_strict_mode = 0/session.use_strict_mode = 1/g' $PHPINI
 	sed -i -e 's/session.cookie_httponly =/session.cookie_httponly = 1/g' $PHPINI
 	sed -i -e 's/session.cookie_secure = 1/;session.cookie_secure =/g' $PHPINI
 	sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
-	sed -i -e 's/;date.timezone =/date.timezone = "Asia\/Tehran"/g' $PHPINI
 	httpdfile="/etc/httpd/conf/httpd.conf"
 	if [ -f "$httpdfile" ]; then
 		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
