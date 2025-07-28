@@ -372,11 +372,7 @@ installJava() {
 			if java -version 2>&1 >/dev/null | grep -q "java version \"1.8.0_$JavaVersion\""; then
 				output "${Green}Java libraries successfully updated!${Color_Off}\n"
 			else
-				output "${Red}Java libraries failed to update!${Color_Off}"
-				output "You have to update JDK and JRE manually."
-				output "\n${Red}The operation aborted!${Color_Off}"
-				output "${Yellow}www.parsvt.com${Color_Off}\n"
-				exit
+				output "${Red}Java libraries failed to update!${Color_Off}\n"
 			fi
 		else
 			output "${Cyan}Installing Java libraries...${Color_Off}"
