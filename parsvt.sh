@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1404-05-04
+# Update: 1404-05-11
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -43,8 +43,9 @@ startInstallation() {
 	echo -e "[${Cyan}3${Color_Off}] ${Cyan}Update ionCube loader${Color_Off}"
 	echo -e "[${Cyan}4${Color_Off}] ${Cyan}Install ClamAV (not recommended for low end servers)${Color_Off}"
 	echo -e "[${Cyan}5${Color_Off}] ${Cyan}Install SSL certificate${Color_Off}"
-	echo -e "[${Yellow}6${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
-	read -p "Please select an action (1-6): " run
+	echo -e "[${Cyan}6${Color_Off}] ${Cyan}Upgrade PHP to 8.3 (run '2' before this)${Color_Off}"
+	echo -e "[${Yellow}7${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
+	read -p "Please select an action (1-7): " run
 	if [ "$run" == "1" ]; then
 		installationType="Install"
 	elif [ "$run" == "2" ]; then
@@ -56,6 +57,8 @@ startInstallation() {
 	elif [ "$run" == "5" ]; then
 		installationType="SSL"
 	elif [ "$run" == "6" ]; then
+		installationType="PHP"
+	elif [ "$run" == "7" ]; then
 		echo -e "\n${Red}The operation aborted!${Color_Off}"
 		echo -e "${Yellow}www.parsvt.com${Color_Off}\n"
 		exit
@@ -514,7 +517,7 @@ echo -e "██████  ███████ ██████  ███
 echo -e "██      ██   ██ ██   ██      ██  ██  ██     ██   "
 echo -e "██      ██   ██ ██   ██ ███████   ████      ██   \n"
 echo -e "Shell script to install ParsVT CRM on Linux."
-echo -e "Please run as root. if you are not, enter '6' now and enter 'sudo su' before running the script.${Color_Off}"
+echo -e "Please run as root. if you are not, enter '7' now and enter 'sudo su' before running the script.${Color_Off}"
 startInstallation
 restoreDNS
 cd /root
@@ -689,7 +692,7 @@ if [ "$installationType" = "Install" ]; then
 				output "${Green}Apache successfully installed!${Color_Off}\n"
 			fi
 			output "Checking the PHP version..."
-			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'5.6.0','>')) echo 'Ok'; else echo 'Failed';")
+			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'5.6.0','>=')) echo 'Ok'; else echo 'Failed';")
 			PHP_VERSION=$(php -r "echo PHP_VERSION;")
 			if [ "$PHP_VER" = "Ok" ]; then
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
@@ -728,7 +731,7 @@ if [ "$installationType" = "Install" ]; then
 					output "${Green}ionCube loader successfully installed!${Color_Off}\n"
 				fi
 			else
-				output "Current PHP version: ${Red}${PHP_VER}${Color_Off}"
+				output "Current PHP version: ${Red}${PHP_VERSION}${Color_Off}"
 				output "${Red}PHP version must be greater than 5.5${Color_Off}"
 				output "\n${Red}The operation aborted!${Color_Off}"
 				output "${Yellow}www.parsvt.com${Color_Off}\n"
@@ -960,7 +963,7 @@ if [ "$installationType" = "Repair" ]; then
 		else
 			output "${Green}PHP is already installed!${Color_Off}\n"
 			output "Checking the PHP version..."
-			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'5.6.0','>')) echo 'Ok'; else echo 'Failed';")
+			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'5.6.0','>=')) echo 'Ok'; else echo 'Failed';")
 			PHP_VERSION=$(php -r "echo PHP_VERSION;")
 			if [ "$PHP_VER" = "Ok" ]; then
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
@@ -992,7 +995,7 @@ if [ "$installationType" = "Repair" ]; then
 					output "${Green}ionCube loader successfully installed!${Color_Off}\n"
 				fi
 			else
-				output "Current PHP version: ${Red}${PHP_VER}${Color_Off}"
+				output "Current PHP version: ${Red}${PHP_VERSION}${Color_Off}"
 				output "${Red}PHP version must be greater than 5.5${Color_Off}"
 				output "\n${Red}The operation aborted!${Color_Off}"
 				output "${Yellow}www.parsvt.com${Color_Off}\n"
@@ -1042,7 +1045,7 @@ if [ "$installationType" = "ionCube" ]; then
 	checkInternetConnection
 	if [ ! -f "/etc/redhat-release" ]; then
 		output "\n${Red}Operating system is not supported!${Color_Off}"
-		output "ionCube loader installer only installs on CentOS and RHEL-based Linuxes."
+		output "ParsVT installer only installs on CentOS and RHEL-based Linuxes."
 		output "You have to install/update ionCube loader manually."
 		output "\n${Red}The operation aborted!${Color_Off}"
 		output "${Yellow}www.parsvt.com${Color_Off}\n"
@@ -1073,7 +1076,7 @@ if [ "$installationType" = "ionCube" ]; then
 		else
 			output "${Green}PHP is already installed!${Color_Off}\n"
 			output "Checking the PHP version..."
-			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'5.6.0','>')) echo 'Ok'; else echo 'Failed';")
+			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'5.6.0','>=')) echo 'Ok'; else echo 'Failed';")
 			PHP_VERSION=$(php -r "echo PHP_VERSION;")
 			if [ "$PHP_VER" = "Ok" ]; then
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
@@ -1107,7 +1110,7 @@ if [ "$installationType" = "ionCube" ]; then
 					output "${Green}ionCube loader successfully installed!${Color_Off}\n"
 				fi
 			else
-				output "Current PHP version: ${Red}${PHP_VER}${Color_Off}"
+				output "Current PHP version: ${Red}${PHP_VERSION}${Color_Off}"
 				output "${Red}PHP version must be greater than 5.5${Color_Off}"
 				output "\n${Red}The operation aborted!${Color_Off}"
 				output "${Yellow}www.parsvt.com${Color_Off}\n"
@@ -1121,7 +1124,7 @@ if [ "$installationType" = "clamAV" ]; then
 	checkInternetConnection
 	if [ ! -f "/etc/redhat-release" ]; then
 		output "\n${Red}Operating system is not supported!${Color_Off}"
-		output "ClamAV installer only installs on CentOS and RHEL-based Linuxes."
+		output "ParsVT installer only installs on CentOS and RHEL-based Linuxes."
 		output "You have to install ClamAV manually."
 		output "\n${Red}The operation aborted!${Color_Off}"
 		output "${Yellow}www.parsvt.com${Color_Off}\n"
@@ -1179,7 +1182,7 @@ if [ "$installationType" = "SSL" ]; then
 	checkInternetConnection
 	if [ ! -f "/etc/redhat-release" ]; then
 		output "\n${Red}Operating system is not supported!${Color_Off}"
-		output "SSL installer only installs on CentOS and RHEL-based Linuxes."
+		output "ParsVT installer only installs on CentOS and RHEL-based Linuxes."
 		output "You have to install SSL manually."
 		output "\n${Red}The operation aborted!${Color_Off}"
 		output "${Yellow}www.parsvt.com${Color_Off}\n"
@@ -1226,6 +1229,71 @@ if [ "$installationType" = "SSL" ]; then
 		fi
 		output "${Green}SSL certificate requirements successfully installed!${Color_Off}\n"
 		sslDomain
+	fi
+fi
+if [ "$installationType" = "PHP" ]; then
+	output "\n${Green}Coming soon!${Color_Off}"
+	output "www.parsvt.com\n"
+	exit
+	checkInternetConnection
+	if [ ! -f "/etc/redhat-release" ]; then
+		output "\n${Red}Operating system is not supported!${Color_Off}"
+		output "ParsVT installer only installs on CentOS and RHEL-based Linuxes."
+		output "You have to upgrade PHP manually."
+		output "\n${Red}The operation aborted!${Color_Off}"
+		output "${Yellow}www.parsvt.com${Color_Off}\n"
+		exit
+	else
+		if [ -f "/etc/redhat-release" ]; then
+			fullname=$(cat /etc/redhat-release)
+			major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
+			ARCH=$(uname -m)
+			output "${Green}${fullname} ${ARCH}${Color_Off}\n"
+		fi
+		wgetfile="/usr/bin/wget"
+		curlfile="/usr/bin/curl"
+		if [ ! -f "$wgetfile" ] || [ ! -f "$curlfile" ]; then
+			output "${Red}required packages failed to install!${Color_Off}"
+			output "Please check the server's internet connection and DNS settings and run the installer again."
+			output "\n${Red}The operation aborted!${Color_Off}"
+			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			restoreDNS
+			exit
+		fi
+		if ! command -v "php" &>/dev/null; then
+			output "${Red}PHP is not installed!${Color_Off}"
+			output "\n${Red}The operation aborted!${Color_Off}"
+			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			restoreDNS
+			exit
+		else
+			output "${Green}PHP is already installed!${Color_Off}\n"
+			output "Checking the PHP version..."
+			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'8.3.24','=')) echo 'Ok'; elseif (version_compare(PHP_VERSION,'5.6.0','>=')) echo 'Upgrade'; else echo 'Failed';")
+			PHP_VERSION=$(php -r "echo PHP_VERSION;")
+			if [ "$PHP_VER" = "Ok" ]; then
+				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
+				restoreDNS
+				exit
+			elif [ "$PHP_VER" = "Upgrade" ]; then
+				output "Current PHP version: ${Red}${PHP_VERSION}${Color_Off}"
+				output "\n${Cyan}Upgrading PHP...${Color_Off}"
+				if [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
+					dnf module reset php -y
+					dnf module install php:remi-8.3 -y
+					dnf install --enablerepo=remi --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-curl php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel unixODBC-devel make -y
+					dnf update --skip-broken -y
+				fi
+				output "${Green}PHP successfully Upgraded!${Color_Off}\n"
+			else
+				output "Current PHP version: ${Red}${PHP_VERSION}${Color_Off}"
+				output "${Red}PHP version must be greater than 5.5${Color_Off}"
+				output "\n${Red}The operation aborted!${Color_Off}"
+				output "${Yellow}www.parsvt.com${Color_Off}\n"
+				restoreDNS
+				exit
+			fi
+		fi
 	fi
 fi
 restoreDNS
