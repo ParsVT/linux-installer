@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1404-05-11
+# Update: 1404-07-12
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -277,8 +277,8 @@ installTimezonedb() {
 		rm -rf timezonedb*
 		mkdir -p timezonedb
 		cd timezonedb
-		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2025.2.tgz -O timezonedb-2025.2.tgz
-		pear install timezonedb-2025.2.tgz
+		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2025.2.2.tgz -O timezonedb-2025.2.2.tgz
+		pear install timezonedb-2025.2.2.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
 		fi
@@ -301,8 +301,8 @@ setRequirements() {
 	sed -i -e 's/short_open_tag = Off/short_open_tag = On/g' $PHPINI
 	sed -i -e 's/;max_input_vars = 1000/max_input_vars = 10000/g' $PHPINI
 	sed -i -e 's/; max_input_vars = 1000/max_input_vars = 10000/g' $PHPINI
-	sed -i -e 's/log_errors = On/log_errors = Off/g' $PHPINI
-	sed -i -e 's/display_errors = Off/display_errors = On/g' $PHPINI
+	sed -i -e 's/log_errors = Off/log_errors = On/g' $PHPINI
+	sed -i -e 's/display_errors = On/display_errors = Off/g' $PHPINI
 	sed -i -e 's/error_reporting = E_ALL \& ~E_DEPRECATED \& ~E_STRICT/error_reporting = E_ALL \& ~E_NOTICE \& ~E_WARNING \& ~E_DEPRECATED \& ~E_STRICT/g' $PHPINI
 	sed -i -e 's/output_buffering = Off/output_buffering = 4096/g' $PHPINI
 	sed -i -e 's/file_uploads = Off/file_uploads = On/g' $PHPINI
@@ -325,7 +325,7 @@ setRequirements() {
 	sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
 	httpdfile="/etc/httpd/conf/httpd.conf"
 	if [ -f "$httpdfile" ]; then
-		sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
+		#sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
 		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
 		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "TimeOut"; then
 			sed -i '/Listen 80/a TimeOut 600' /etc/httpd/conf/httpd.conf
@@ -337,15 +337,15 @@ setRequirements() {
 			sed -i '/ServerTokens Prod/a ServerSignature Off' /etc/httpd/conf/httpd.conf
 		fi
 	fi
-	sslfile="/etc/httpd/conf.d/ssl.conf"
-	if [ -f "$sslfile" ]; then
-		sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
-	fi
-	wwwfile="/etc/php-fpm.d/www.conf"
-	if [ -f "$wwwfile" ]; then
-		sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
-		sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
-	fi
+	#sslfile="/etc/httpd/conf.d/ssl.conf"
+	#if [ -f "$sslfile" ]; then
+	#	sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
+	#fi
+	#wwwfile="/etc/php-fpm.d/www.conf"
+	#if [ -f "$wwwfile" ]; then
+	#	sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
+	#	sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
+	#fi
 	restartApache
 	output "${Green}ParsVT requirements have been set!${Color_Off}\n"
 }
@@ -437,6 +437,7 @@ openPorts() {
 		firewall-cmd --zone=public --permanent --add-port=2222/tcp
 		firewall-cmd --zone=public --permanent --add-port=8080/tcp
 		firewall-cmd --zone=public --permanent --add-port=8081/tcp
+		firewall-cmd --zone=public --permanent --add-port=8443/tcp
 		firewall-cmd --zone=public --permanent --add-port=10000/tcp
 		firewall-cmd --reload
 	else
@@ -458,6 +459,7 @@ openPorts() {
 		iptables -A INPUT -p tcp -m tcp --dport 2222 -j ACCEPT
 		iptables -A INPUT -p tcp -m tcp --dport 8080 -j ACCEPT
 		iptables -A INPUT -p tcp -m tcp --dport 8081 -j ACCEPT
+		iptables -A INPUT -p tcp -m tcp --dport 8443 -j ACCEPT
 		iptables -A INPUT -p tcp -m tcp --dport 10000 -j ACCEPT
 		service iptables save
 	fi
@@ -836,10 +838,8 @@ expect eof
 		fi
 		unzip -q -o $SETUPDIR/extensions.zip -d $SETUPDIR
 		chown -R apache:apache $SETUPDIR
-		cd $SETUPDIR
-		find -type d -exec chmod 0755 {} \;
-		find -type f -exec chmod 0644 {} \;
-		cd /root
+		find $SETUPDIR -type d -exec chmod 0755 {} \;
+		find $SETUPDIR -type f -exec chmod 0644 {} \;
 		rm -rf $SETUPDIR/latest.zip*
 		rm -rf $SETUPDIR/extensions.zip*
 		if [ "$INSTALLTYPE" = "Exist" ]; then
@@ -879,10 +879,10 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.402-1.noarch.rpm -y
+			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.510-1.noarch.rpm -y
 			dnf install --skip-broken webmin -y
 		else
-			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.402-1.noarch.rpm -y
+			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.510-1.noarch.rpm -y
 			yum install --skip-broken webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
@@ -1026,10 +1026,8 @@ if [ "$installationType" = "Repair" ]; then
 		installJava
 		output "${Cyan}Fixing permissions of directories and files...${Color_Off}"
 		chown -R apache:apache /var/www/html
-		cd /var/www/html
-		find -type d -exec chmod 0755 {} \;
-		find -type f -exec chmod 0644 {} \;
-		cd /root
+		find /var/www/html -type d -exec chmod 0755 {} \;
+		find /var/www/html -type f -exec chmod 0644 {} \;
 		output "${Green}Permissions of directories and files successfully fixed!${Color_Off}\n"
 		set +e
 		openPorts
@@ -1278,11 +1276,17 @@ if [ "$installationType" = "PHP" ]; then
 			elif [ "$PHP_VER" = "Upgrade" ]; then
 				output "Current PHP version: ${Red}${PHP_VERSION}${Color_Off}"
 				output "\n${Cyan}Upgrading PHP...${Color_Off}"
-				if [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
+				if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 					dnf module reset php -y
 					dnf module install php:remi-8.3 -y
-					dnf install --enablerepo=remi --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-curl php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel unixODBC-devel make -y
 					dnf update --skip-broken -y
+				else
+					output "\n${Red}Operating system is not supported!${Color_Off}"
+					output "PHP upgrader only works on version 9/10."
+					output "You have to upgrade PHP manually."
+					output "\n${Red}The operation aborted!${Color_Off}"
+					output "${Yellow}www.parsvt.com${Color_Off}\n"
+					exit
 				fi
 				output "${Green}PHP successfully Upgraded!${Color_Off}\n"
 			else
