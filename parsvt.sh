@@ -411,57 +411,57 @@ installJava() {
 openPorts() {
 	output "${Cyan}Opening required firewall ports...${Color_Off}"
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		systemctl enable firewalld
-		systemctl restart firewalld
-		firewall-cmd --zone=public --permanent --add-service=http
-		firewall-cmd --zone=public --permanent --add-service=https
-		firewall-cmd --zone=public --permanent --add-service=imaps
-		firewall-cmd --zone=public --permanent --add-service=ssh
-		firewall-cmd --zone=public --permanent --add-service=smtp
-		firewall-cmd --zone=public --permanent --add-service=ntp
-		firewall-cmd --zone=public --permanent --add-port=80/tcp
-		firewall-cmd --zone=public --permanent --add-port=443/tcp
-		firewall-cmd --zone=public --permanent --add-port=143/tcp
-		firewall-cmd --zone=public --permanent --add-port=993/tcp
-		firewall-cmd --zone=public --permanent --add-port=110/tcp
-		firewall-cmd --zone=public --permanent --add-port=995/tcp
-		firewall-cmd --zone=public --permanent --add-port=22/tcp
-		firewall-cmd --zone=public --permanent --add-port=25/tcp
-		firewall-cmd --zone=public --permanent --add-port=2525/tcp
-		firewall-cmd --zone=public --permanent --add-port=587/tcp
-		firewall-cmd --zone=public --permanent --add-port=465/tcp
-		firewall-cmd --zone=public --permanent --add-port=3306/tcp
-		firewall-cmd --zone=public --permanent --add-port=5038/tcp
-		firewall-cmd --zone=public --permanent --add-port=9999/tcp
-		firewall-cmd --zone=public --permanent --add-port=7777/tcp
-		firewall-cmd --zone=public --permanent --add-port=2222/tcp
-		firewall-cmd --zone=public --permanent --add-port=8080/tcp
-		firewall-cmd --zone=public --permanent --add-port=8081/tcp
-		firewall-cmd --zone=public --permanent --add-port=8443/tcp
-		firewall-cmd --zone=public --permanent --add-port=10000/tcp
-		firewall-cmd --reload
+		systemctl is-active --quiet firewalld && systemctl enable firewalld
+		systemctl is-active --quiet firewalld && systemctl restart firewalld
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=http
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=https
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=imaps
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=ssh
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=smtp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=ntp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=80/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=443/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=143/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=993/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=110/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=995/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=22/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=25/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=2525/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=587/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=465/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=3306/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=5038/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=9999/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=7777/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=2222/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=8080/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=8081/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=8443/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=10000/tcp
+		systemctl is-active --quiet firewalld && firewall-cmd --reload
 	else
-		iptables -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 143 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 993 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 110 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 995 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 25 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 2525 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 587 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 465 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 3306 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 5038 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 9999 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 7777 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 2222 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 8080 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 8081 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 8443 -j ACCEPT
-		iptables -A INPUT -p tcp -m tcp --dport 10000 -j ACCEPT
-		service iptables save
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 143 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 993 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 110 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 995 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 25 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 2525 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 587 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 465 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 3306 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 5038 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 9999 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 7777 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 2222 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 8080 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 8081 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 8443 -j ACCEPT
+		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 10000 -j ACCEPT
+		systemctl is-active --quiet iptables && service iptables save
 	fi
 	output "${Green}Required firewall ports successfully opened!${Color_Off}"
 }
