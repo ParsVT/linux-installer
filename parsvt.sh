@@ -1267,7 +1267,7 @@ if [ "$installationType" = "PHP" ]; then
 		else
 			output "${Green}PHP is already installed!${Color_Off}\n"
 			output "Checking the PHP version..."
-			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'8.3.24','=')) echo 'Ok'; elseif (version_compare(PHP_VERSION,'5.6.0','>=')) echo 'Upgrade'; else echo 'Failed';")
+			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'8.3.28','=')) echo 'Ok'; elseif (version_compare(PHP_VERSION,'5.6.0','>=')) echo 'Upgrade'; else echo 'Failed';")
 			PHP_VERSION=$(php -r "echo PHP_VERSION;")
 			if [ "$PHP_VER" = "Ok" ]; then
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
