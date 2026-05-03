@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1404-07-12
+# Update: 1404-11-19
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -41,10 +41,11 @@ startInstallation() {
 	echo -e "[${Cyan}1${Color_Off}] ${Cyan}Install ParsVT CRM${Color_Off}"
 	echo -e "[${Cyan}2${Color_Off}] ${Cyan}Repair server configurations${Color_Off}"
 	echo -e "[${Cyan}3${Color_Off}] ${Cyan}Update ionCube loader${Color_Off}"
-	echo -e "[${Cyan}4${Color_Off}] ${Cyan}Install ClamAV (not recommended for low end servers)${Color_Off}"
+	echo -e "[${Cyan}4${Color_Off}] ${Cyan}Install ClamAV (not recommended for low-end servers)${Color_Off}"
 	echo -e "[${Cyan}5${Color_Off}] ${Cyan}Install SSL certificate${Color_Off}"
 	echo -e "[${Cyan}6${Color_Off}] ${Cyan}Upgrade PHP to 8.3 (run '2' before this)${Color_Off}"
-	echo -e "[${Yellow}7${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
+	echo -e "[${Yellow}7${Color_Off}] ${Yellow}Install ParsVT CRM (national internet)${Color_Off}"
+	echo -e "[${Yellow}0${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
 	read -p "Please select an action (1-7): " run
 	if [ "$run" == "1" ]; then
 		installationType="Install"
@@ -59,6 +60,8 @@ startInstallation() {
 	elif [ "$run" == "6" ]; then
 		installationType="PHP"
 	elif [ "$run" == "7" ]; then
+		installationType="Install2"
+	elif [ "$run" == "0" ]; then
 		echo -e "\n${Red}The operation aborted!${Color_Off}"
 		echo -e "${Yellow}www.parsvt.com${Color_Off}\n"
 		exit
@@ -69,7 +72,11 @@ startInstallation() {
 checkInternetConnection() {
 	TIMESTAMP=$(date +%s)
 	set +e
-	ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1
+	if [ "$installationType" = "Install2" ]; then
+		ping -c 1 -W 1 aweb.co >/dev/null 2>&1
+	else
+		ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1
+	fi
 	set -e
 	if [ $(($(date +%s) - $TIMESTAMP)) -eq 0 ]; then
 		echo -e "\n${Green}Internet connection is UP - $(date +%Y-%m-%d_%H:%M:%S_%Z) - $(($(date +%s) - $TIMESTAMP))${Color_Off}"
@@ -163,9 +170,17 @@ restartDatabase() {
 disableSELinux() {
 	STATUS=$(getenforce)
 	if [ "$STATUS" = "disabled" ] || [ "$STATUS" = "Disabled" ]; then
-		output "\n${Green}SELinux is already disabled!${Color_Off}"
+		if [ "$installationType" = "Install2" ]; then
+			output "${Green}SELinux is already disabled!${Color_Off}"
+		else
+			output "\n${Green}SELinux is already disabled!${Color_Off}"
+		fi
 	else
-		output "\n${Cyan}Disabling SELinux...${Color_Off}"
+		if [ "$installationType" = "Install2" ]; then
+			output "${Cyan}Disabling SELinux...${Color_Off}"
+		else
+			output "\n${Cyan}Disabling SELinux...${Color_Off}"
+		fi
 		setenforce 0
 		sed -i -e 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 		sed -i -e 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
@@ -177,11 +192,31 @@ updatePackage() {
 		if ! { [ "$major" = "9" ] || [ "$major" = "10" ]; }; then
 			output "\n${Cyan}Fixing deprecated CentOS repositories...${Color_Off}"
 			set +e
-			sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/CentOS-*.repo
-			sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/CentOS-*.repo
-			sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/CentOS-*.repo
+			sed -i 's/mirror.centos.org/vault.centos.org/g' /etc/yum.repos.d/CentOS-*.repo
+			sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/CentOS-*.repo
+			sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/CentOS-*.repo
 			set -e
 			output "${Green}Deprecated CentOS repositories successfully fixed!${Color_Off}"
+		fi
+	fi
+	if [ "$installationType" = "Install2" ]; then
+		if grep -rnwq "/etc/redhat-release" -e "AlmaLinux"; then
+			output "\n${Cyan}Fixing AlmaLinux repositories...${Color_Off}"
+			sed -i 's/repo.almalinux.org/mirror.mobinhost.com/g' /etc/yum.repos.d/almalinux-*.repo
+			sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/almalinux-*.repo
+			sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/almalinux-*.repo
+			if [ -f "/etc/yum.repos.d/epel.repo" ]; then
+				sed -i 's/download.example\/pub/mirror.mobinhost.com/g' /etc/yum.repos.d/epel*.repo
+				sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/epel*.repo
+				sed -i 's/^metalink=http/#metalink=http/g' /etc/yum.repos.d/epel*.repo
+			fi
+			if [ -f "/etc/yum.repos.d/remi.repo" ]; then
+				sed -i 's/rpms.remirepo.net/mirror.aweb.co\/remi/g' /etc/yum.repos.d/remi*.repo
+				sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/remi*.repo
+				sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/remi*.repo
+				sed -i 's/baseurl=https/baseurl=http/g' /etc/yum.repos.d/remi*.repo
+			fi
+			output "${Green}AlmaLinux repositories successfully fixed!${Color_Off}"
 		fi
 	fi
 	if [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
@@ -237,9 +272,9 @@ updatePackage() {
 installPackage() {
 	output "\n${Cyan}Installing required packages...${Color_Off}"
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		dnf install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata chrony -y
+		dnf install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata proxychains-ng chrony -y
 	else
-		yum install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata ntp ntpdate ntp-doc -y
+		yum install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata proxychains-ng ntp ntpdate ntp-doc -y
 	fi
 	if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		dnf install --skip-broken initscripts -y
@@ -250,9 +285,9 @@ installIonCube() {
 	cd /tmp
 	rm -rf ioncube_loaders_lin*.tar.gz*
 	if [ "$ARCH" = "x86_64" ]; then
-		wget http://$primarySite/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86-64.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
+		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86-64.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
 	else
-		wget http://$primarySite/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
+		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
 	fi
 	tar xfz ioncube_loaders_lin_x86-64.tar.gz
 	PHP_CONFD="/etc/php.d"
@@ -277,7 +312,7 @@ installTimezonedb() {
 		rm -rf timezonedb*
 		mkdir -p timezonedb
 		cd timezonedb
-		wget http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2025.2.2.tgz -O timezonedb-2025.2.2.tgz
+		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2025.2.2.tgz -O timezonedb-2025.2.2.tgz
 		pear install timezonedb-2025.2.2.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
@@ -492,13 +527,13 @@ mysqlConnection() {
 }
 sslDomain() {
 	read -p "Please enter your domain name (example.com): " domain
-	staticip=$(wget -O- -q "http://$primarySite/ip.php")
+	staticip=$(wget --no-check-certificate -O- -q "http://$primarySite/ip.php")
 	read -p "Are you sure you have created a DNS (A record) to connect the domain $(tput bold)${domain}$(tput sgr0) to the static IP $(tput bold)${staticip}$(tput sgr0)? (y/n): " confirmdomain
 	if [ "$confirmdomain" = "y" ] || [ "$confirmdomain" = "yes" ] || [ "$confirmdomain" = "Y" ] || [ "$confirmdomain" = "Yes" ] || [ "$confirmdomain" = "YES" ] || [ "$confirmdomain" = "1" ]; then
 		if [ ! -L "/var/www/$domain" ]; then
 			ln -s /var/www/html /var/www/$domain
 		fi
-		wget -q http://$primarySite/modules/addons/easyservice/Installer/domain.txt -O /etc/httpd/conf.d/$domain.conf
+		wget --no-check-certificate -q http://$primarySite/modules/addons/easyservice/Installer/domain.txt -O /etc/httpd/conf.d/$domain.conf
 		sed -i -e "s/example.com/$domain/g" /etc/httpd/conf.d/$domain.conf
 		restartApache
 		certbot --apache -d $domain
@@ -519,11 +554,11 @@ echo -e "██████  ███████ ██████  ███
 echo -e "██      ██   ██ ██   ██      ██  ██  ██     ██   "
 echo -e "██      ██   ██ ██   ██ ███████   ████      ██   \n"
 echo -e "Shell script to install ParsVT CRM on Linux."
-echo -e "Please run as root. if you are not, enter '7' now and enter 'sudo su' before running the script.${Color_Off}"
+echo -e "Please run as root. if you are not, enter '0' now and enter 'sudo su' before running the script.${Color_Off}"
 startInstallation
 restoreDNS
 cd /root
-if [ "$installationType" = "Install" ]; then
+if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; then
 	if [ -e /var/www/html/config.inc.php ]; then
 		output "\n${Red}VtigerCRM already exists!${Color_Off}"
 		output "Press Ctrl+C within the next 10 seconds to cancel the installation."
@@ -544,6 +579,22 @@ if [ "$installationType" = "Install" ]; then
 		major=$(cat /etc/redhat-release | tr -dc '0-9.' | cut -d \. -f1)
 		ARCH=$(uname -m)
 		output "${Green}${fullname} ${ARCH}${Color_Off}"
+		if [ "$installationType" = "Install2" ]; then
+			if [ ! -f "/etc/almalinux-release" ]; then
+				output "\n${Red}Operating system is not supported!${Color_Off}"
+				output "ParsVT (No-Internet) installer only installs on AlmaLinux 9."
+				output "\n${Red}The operation aborted!${Color_Off}"
+				output "${Yellow}www.parsvt.com${Color_Off}\n"
+				exit
+			fi
+			if ! { [ "$major" = "9" ]; }; then
+				output "\n${Red}Operating system is not supported!${Color_Off}"
+				output "ParsVT (No-Internet) installer only installs on AlmaLinux 9."
+				output "\n${Red}The operation aborted!${Color_Off}"
+				output "${Yellow}www.parsvt.com${Color_Off}\n"
+				exit
+			fi
+		fi
 		IPS=$(hostname --all-ip-addresses)
 		ipsarray=($IPS)
 		if [ -n "$ipsarray" ]; then
@@ -586,7 +637,9 @@ if [ "$installationType" = "Install" ]; then
 			exit
 		fi
 		output "\n${Green}${LICENSEKEY}${Color_Off} will be used as the license key.\n"
-		setDNS
+		if ! { [ "$installationType" = "Install2" ]; }; then
+			setDNS
+		fi
 		disableSELinux
 		updatePackage
 		installPackage
@@ -624,6 +677,21 @@ if [ "$installationType" = "Install" ]; then
 			if [ ! -f "$file" ]; then
 				yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/epel-release-latest-$major.noarch.rpm -y
 				yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/remi-release-$major.rpm -y
+			fi
+		fi
+		if [ "$installationType" = "Install2" ]; then
+			if grep -rnwq "/etc/redhat-release" -e "AlmaLinux"; then
+				if [ -f "/etc/yum.repos.d/epel.repo" ]; then
+					sed -i 's/download.example\/pub/mirror.mobinhost.com/g' /etc/yum.repos.d/epel*.repo
+					sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/epel*.repo
+					sed -i 's/^metalink=http/#metalink=http/g' /etc/yum.repos.d/epel*.repo
+				fi
+				if [ -f "/etc/yum.repos.d/remi.repo" ]; then
+					sed -i 's/rpms.remirepo.net/mirror.aweb.co\/remi/g' /etc/yum.repos.d/remi*.repo
+					sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/remi*.repo
+					sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/remi*.repo
+					sed -i 's/baseurl=https/baseurl=http/g' /etc/yum.repos.d/remi*.repo
+				fi
 			fi
 		fi
 		if [ "$major" = "8" ]; then
@@ -699,7 +767,7 @@ if [ "$installationType" = "Install" ]; then
 			if [ "$PHP_VER" = "Ok" ]; then
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
 				output "Checking the ionCube loader version..."
-				wget -q http://$primarySite/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
+				wget --no-check-certificate -q http://$primarySite/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
 				set +e
 				IONCUBE_VER=$(php -f /root/IC.php)
 				IONCUBE_VERSION=$(php -r "error_reporting(0); echo ioncube_loader_version();")
@@ -816,7 +884,7 @@ expect eof
 ")
 			fi
 			echo "$SECURE_MYSQL"
-			wget -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
+			wget --no-check-certificate -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
 			restartDatabase
 			output "${Green}MySQL (MariaDB) successfully installed!${Color_Off}\n"
 			output "${Cyan}Creating database...${Color_Off}"
@@ -828,13 +896,13 @@ expect eof
 		output "${Cyan}Installing ParsVT CRM package...${Color_Off}"
 		file="$SETUPDIR/latest.zip"
 		if [ ! -f "$file" ]; then
-			wget -q http://$primarySite/modules/addons/easyservice/Installer/download.php -O "$SETUPDIR"/latest.zip
+			wget --no-check-certificate -q http://$primarySite/modules/addons/easyservice/Installer/download.php -O "$SETUPDIR"/latest.zip
 		fi
 		unzip -q -o $SETUPDIR/latest.zip -d $SETUPDIR
 		mkdir -p "$SETUPDIR/test/data/modules/"
 		file="$SETUPDIR/extensions.zip"
 		if [ ! -f "$file" ]; then
-			wget -q "${RESPONSES[2]}" -O "$SETUPDIR"/extensions.zip
+			wget --no-check-certificate -q "${RESPONSES[2]}" -O "$SETUPDIR"/extensions.zip
 		fi
 		unzip -q -o $SETUPDIR/extensions.zip -d $SETUPDIR
 		chown -R apache:apache $SETUPDIR
@@ -859,9 +927,9 @@ expect eof
 		mysql -h $DBHOST -u $DBUSER -p$DBPassword $DBNAME --default-character-set=utf8mb4 --silent -e "TRUNCATE vtiger_loginhistory;"
 		CRMURL="$ETH_DEV/$app_dir"
 		CRMURL=$(string_replace "$CRMURL" "/")
-		wget -q -o /dev/null -O /dev/null "http://$CRMURL/_install.php?db_hostname=$DBHOST&db_name=$DBNAME&db_username=$DBUSER&db_password=$DBPassword"
-		wget -q -o /dev/null -O /dev/null "http://$CRMURL/_extensions.php?token=${RESPONSES[1]}"
-		grep "http://$CRMURL/vtigercron.php" /var/spool/cron/root || echo "*/15 * * * * wget --spider \"http://$CRMURL/vtigercron.php\" >/dev/null 2>&1" >>/var/spool/cron/root
+		wget --no-check-certificate -q -o /dev/null -O /dev/null "http://$CRMURL/_install.php?db_hostname=$DBHOST&db_name=$DBNAME&db_username=$DBUSER&db_password=$DBPassword"
+		wget --no-check-certificate -q -o /dev/null -O /dev/null "http://$CRMURL/_extensions.php?token=${RESPONSES[1]}"
+		grep "http://$CRMURL/vtigercron.php" /var/spool/cron/root || echo "*/15 * * * * wget --no-check-certificate --spider \"http://$CRMURL/vtigercron.php\" >/dev/null 2>&1" >>/var/spool/cron/root
 		rm -rf $SETUPDIR/_install*
 		rm -rf $SETUPDIR/_extensions*
 		output "${Green}ParsVT CRM package successfully installed!${Color_Off}\n"
@@ -968,7 +1036,7 @@ if [ "$installationType" = "Repair" ]; then
 			if [ "$PHP_VER" = "Ok" ]; then
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
 				output "Checking the ionCube loader version..."
-				wget -q http://$primarySite/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
+				wget --no-check-certificate -q http://$primarySite/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
 				set +e
 				IONCUBE_VER=$(php -f /root/IC.php)
 				IONCUBE_VERSION=$(php -r "error_reporting(0); echo ioncube_loader_version();")
@@ -1079,7 +1147,7 @@ if [ "$installationType" = "ionCube" ]; then
 			if [ "$PHP_VER" = "Ok" ]; then
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
 				output "Checking the ionCube loader version..."
-				wget -q http://$primarySite/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
+				wget --no-check-certificate -q http://$primarySite/modules/addons/easyservice/Installer/ic.txt -O /root/IC.php
 				set +e
 				IONCUBE_VER=$(php -f /root/IC.php)
 				IONCUBE_VERSION=$(php -r "error_reporting(0); echo ioncube_loader_version();")
@@ -1162,7 +1230,7 @@ if [ "$installationType" = "clamAV" ]; then
 		touch /var/log/clamav/daily_scan.log
 		chmod 0755 /var/log/clamav
 		chmod 0640 /var/log/clamav/daily_scan.log
-		wget http://$primarySite/modules/addons/easyservice/Installer/daily_clamscan.txt -O /usr/local/bin/daily_clamscan.sh
+		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/daily_clamscan.txt -O /usr/local/bin/daily_clamscan.sh
 		chmod +x /usr/local/bin/daily_clamscan.sh
 		setfacl -m u:root:rwx /var/log/clamav
 		setfacl -m u:root:rx /usr/local/bin/daily_clamscan.sh
@@ -1230,7 +1298,7 @@ if [ "$installationType" = "SSL" ]; then
 	fi
 fi
 if [ "$installationType" = "PHP" ]; then
-	output "\n${Green}Coming soon!${Color_Off}"
+	output "\n${Green}Coming soon...${Color_Off}"
 	output "www.parsvt.com\n"
 	exit
 	checkInternetConnection
