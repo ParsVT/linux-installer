@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1404-11-19
+# Update: 1405-03-27
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -312,8 +312,8 @@ installTimezonedb() {
 		rm -rf timezonedb*
 		mkdir -p timezonedb
 		cd timezonedb
-		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2025.2.2.tgz -O timezonedb-2025.2.2.tgz
-		pear install timezonedb-2025.2.2.tgz
+		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2026.1.tgz -O timezonedb-2026.1.tgz
+		pear install timezonedb-2026.1.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
 		fi
@@ -363,10 +363,10 @@ setRequirements() {
 		#sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
 		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
 		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "TimeOut"; then
-			sed -i '/Listen 80/a TimeOut 600' /etc/httpd/conf/httpd.conf
+			sed -i '/Listen 80/a Timeout 600' /etc/httpd/conf/httpd.conf
 		fi
 		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "ServerTokens"; then
-			sed -i '/TimeOut 600/a ServerTokens Prod' /etc/httpd/conf/httpd.conf
+			sed -i '/Timeout 600/a ServerTokens Prod' /etc/httpd/conf/httpd.conf
 		fi
 		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "ServerSignature"; then
 			sed -i '/ServerTokens Prod/a ServerSignature Off' /etc/httpd/conf/httpd.conf
@@ -566,7 +566,9 @@ if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; 
 		INSTALLTYPE="Exist"
 		sleep 10
 	fi
-	checkInternetConnection
+	if ! { [ "$installationType" = "Install2" ]; }; then
+		checkInternetConnection
+	fi
 	if [ ! -f "/etc/redhat-release" ]; then
 		output "\n${Red}Operating system is not supported!${Color_Off}"
 		output "ParsVT installer only installs on CentOS and RHEL-based Linuxes."
@@ -947,10 +949,10 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.510-1.noarch.rpm -y
+			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.641-1.noarch -y
 			dnf install --skip-broken webmin -y
 		else
-			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.510-1.noarch.rpm -y
+			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.641-1.noarch -y
 			yum install --skip-broken webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
