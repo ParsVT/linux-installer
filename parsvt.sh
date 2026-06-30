@@ -272,9 +272,9 @@ updatePackage() {
 installPackage() {
 	output "\n${Cyan}Installing required packages...${Color_Off}"
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		dnf install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata proxychains-ng chrony -y
+		dnf install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata chrony -y
 	else
-		yum install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata proxychains-ng ntp ntpdate ntp-doc -y
+		yum install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata ntp ntpdate ntp-doc -y
 	fi
 	if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		dnf install --skip-broken initscripts -y
@@ -698,18 +698,18 @@ if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; 
 		fi
 		if [ "$major" = "8" ]; then
 			dnf config-manager --set-enabled powertools
-			dnf install --enablerepo=remi,powertools --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
+			dnf install --enablerepo=remi,powertools --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA proxychains-ng -y
 		elif [ "$major" = "9" ]; then
 			dnf config-manager --set-enabled crb
-			dnf install --enablerepo=remi,crb --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
+			dnf install --enablerepo=remi,crb --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA proxychains-ng -y
 			set +e
 			dnf install --enablerepo=remi,crb --skip-broken epel-next-release -y
 			set -e
 		elif [ "$major" = "10" ]; then
 			dnf config-manager --set-enabled crb
-			dnf install --enablerepo=remi,crb --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
+			dnf install --enablerepo=remi,crb --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA proxychains-ng -y
 		else
-			yum install --enablerepo=remi --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA -y
+			yum install --enablerepo=remi --skip-broken epel-release perl perl-Net-SSLeay openssl perl-IO-Tty perl-Encode-Detect htop iotop perl-Digest-MD5 perl-Digest-SHA proxychains-ng -y
 		fi
 		output "${Green}Remi repository successfully installed!${Color_Off}\n"
 		file="/etc/yum.repos.d/remi.repo"
