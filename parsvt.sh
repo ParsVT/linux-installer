@@ -272,9 +272,9 @@ updatePackage() {
 installPackage() {
 	output "\n${Cyan}Installing required packages...${Color_Off}"
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		dnf install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata chrony -y
+		dnf install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata chrony bind-utils -y
 	else
-		yum install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata ntp ntpdate ntp-doc -y
+		yum install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata ntp ntpdate ntp-doc bind-utils -y
 	fi
 	if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 		dnf install --skip-broken initscripts -y
