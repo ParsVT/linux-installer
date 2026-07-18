@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1405-03-27
+# Update: 1405-04-24
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -43,7 +43,7 @@ startInstallation() {
 	echo -e "[${Cyan}3${Color_Off}] ${Cyan}Update ionCube loader${Color_Off}"
 	echo -e "[${Cyan}4${Color_Off}] ${Cyan}Install ClamAV (not recommended for low-end servers)${Color_Off}"
 	echo -e "[${Cyan}5${Color_Off}] ${Cyan}Install SSL certificate${Color_Off}"
-	echo -e "[${Cyan}6${Color_Off}] ${Cyan}Upgrade PHP to 8.3 (run '2' before this)${Color_Off}"
+	echo -e "[${Cyan}6${Color_Off}] ${Cyan}Upgrade PHP to 8.3 (run '2' before and after this)${Color_Off}"
 	echo -e "[${Yellow}7${Color_Off}] ${Yellow}Install ParsVT CRM (national internet)${Color_Off}"
 	echo -e "[${Yellow}0${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
 	read -p "Please select an action (1-7): " run
@@ -227,7 +227,7 @@ updatePackage() {
 				dnf distro-sync -y
 				output "${Green}CentOS successfully converted!${Color_Off}\n"
 				output "${Cyan}Updating installed packages...${Color_Off}"
-				yum install --skip-broken dnf -y
+				yum install --skip-broken dnf dnf-plugins-core -y
 				if [ "$installationType" = "Install" ]; then
 					dnf update --skip-broken -y
 				else
@@ -240,7 +240,7 @@ updatePackage() {
 				output "${Green}Installed packages successfully updated!${Color_Off}"
 			else
 				output "\n${Cyan}Updating installed packages...${Color_Off}"
-				yum install --skip-broken dnf -y
+				yum install --skip-broken dnf dnf-plugins-core -y
 				if [ "$installationType" = "Install" ]; then
 					dnf update --skip-broken -y
 				else
@@ -254,13 +254,13 @@ updatePackage() {
 			fi
 		else
 			output "\n${Cyan}Updating installed packages...${Color_Off}"
-			yum install --skip-broken dnf -y
+			yum install --skip-broken dnf dnf-plugins-core -y
 			dnf update --skip-broken -y
 			output "${Green}Installed packages successfully updated!${Color_Off}"
 		fi
 	elif [ "$major" = "7" ]; then
 		output "\n${Cyan}Updating installed packages...${Color_Off}"
-		yum install --skip-broken dnf -y
+		yum install --skip-broken dnf dnf-plugins-core -y
 		dnf update --skip-broken -y
 		output "${Green}Installed packages successfully updated!${Color_Off}"
 	else
@@ -312,8 +312,8 @@ installTimezonedb() {
 		rm -rf timezonedb*
 		mkdir -p timezonedb
 		cd timezonedb
-		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2026.1.tgz -O timezonedb-2026.1.tgz
-		pear install timezonedb-2026.1.tgz
+		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2026.3.tgz -O timezonedb-2026.3.tgz
+		pear install timezonedb-2026.3.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
 		fi
@@ -540,6 +540,8 @@ sslDomain() {
 		certbot renew --dry-run
 		grep "python -c 'import random; import time; time.sleep(random.random() * 3600)' && certbot renew" /var/spool/cron/root || echo "0 0,12 * * * python -c 'import random; import time; time.sleep(random.random() * 3600)' && certbot renew" >>/var/spool/cron/root
 		restartApache
+		systemctl enable --now crond
+		systemctl daemon-reload
 		output "${Green}SSL certificate successfully installed!${Color_Off}\n"
 	else
 		sslDomain
@@ -957,6 +959,8 @@ expect eof
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
 		openPorts
+		systemctl enable --now crond
+		systemctl daemon-reload
 		output "\n${Yellow} ___            __   _______              "
 		output "| _ \__ _ _ _ __\ \ / /_   _|__ ___ _ __  "
 		output "|  _/ _\` | '_(_-<\ V /  | |_/ _/ _ \ '  \ "
@@ -1102,6 +1106,8 @@ if [ "$installationType" = "Repair" ]; then
 		set +e
 		openPorts
 		set -e
+		systemctl enable --now crond
+		systemctl daemon-reload
 		output "\n${Yellow} ___            __   _______              "
 		output "| _ \__ _ _ _ __\ \ / /_   _|__ ___ _ __  "
 		output "|  _/ _\` | '_(_-<\ V /  | |_/ _/ _ \ '  \ "
@@ -1237,6 +1243,8 @@ if [ "$installationType" = "clamAV" ]; then
 		setfacl -m u:root:rwx /var/log/clamav
 		setfacl -m u:root:rx /usr/local/bin/daily_clamscan.sh
 		grep "/usr/local/bin/daily_clamscan.sh" /var/spool/cron/root || echo "0 2 * * * /usr/local/bin/daily_clamscan.sh" >>/var/spool/cron/root
+		systemctl enable --now crond
+		systemctl daemon-reload
 		output "${Green}ClamAV successfully installed!${Color_Off}\n"
 	fi
 fi
@@ -1337,7 +1345,7 @@ if [ "$installationType" = "PHP" ]; then
 		else
 			output "${Green}PHP is already installed!${Color_Off}\n"
 			output "Checking the PHP version..."
-			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'8.3.28','=')) echo 'Ok'; elseif (version_compare(PHP_VERSION,'5.6.0','>=')) echo 'Upgrade'; else echo 'Failed';")
+			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'8.3.32','=')) echo 'Ok'; elseif (version_compare(PHP_VERSION,'5.6.0','>=')) echo 'Upgrade'; else echo 'Failed';")
 			PHP_VERSION=$(php -r "echo PHP_VERSION;")
 			if [ "$PHP_VER" = "Ok" ]; then
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
