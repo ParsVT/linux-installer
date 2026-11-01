@@ -312,8 +312,8 @@ installTimezonedb() {
 		rm -rf timezonedb*
 		mkdir -p timezonedb
 		cd timezonedb
-		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2026.3.tgz -O timezonedb-2026.3.tgz
-		pear install timezonedb-2026.3.tgz
+		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2026.6.tgz -O timezonedb-2026.6.tgz
+		pear install timezonedb-2026.6.tgz
 		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
 			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
 		fi
@@ -951,10 +951,10 @@ expect eof
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.641-1.noarch -y
+			dnf install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.670-1.noarch.rpm -y
 			dnf install --skip-broken webmin -y
 		else
-			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.641-1.noarch -y
+			yum install --skip-broken http://$primarySite/modules/addons/easyservice/Installer/webmin-2.670-1.noarch.rpm -y
 			yum install --skip-broken webmin -y
 		fi
 		output "${Green}Webmin successfully installed!${Color_Off}\n"
