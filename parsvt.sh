@@ -3,7 +3,7 @@
 # Program: ParsVT CRM Installation Script
 # Developer: Hamid Rabiei, Mohammad Hadadpour
 # Release: 1397-12-10
-# Update: 1405-04-24
+# Update: 1405-08-12
 # #########################################
 set -e
 shecanDNS1="178.22.122.100"
@@ -17,24 +17,124 @@ Purple="\e[0;35m"
 Cyan="\e[0;36m"
 primarySite="aweb.co"
 ETH_DEV="127.0.0.1"
-IP=$(ifconfig eth0 2>/dev/null | awk '/inet addr:/ {print $2}' | sed 's/addr://')
 INSTALLTYPE="Fresh"
 DBHOST="localhost"
 DBUSER="root"
 DBNAME="parsvt"
-SETUPDIR="/var/www/html/"
+SETUPDIR="/var/www/html"
 SETUPDIR2="/var/www/html"
 backupdirectory="/home/backup"
 counter=0
 LICENSEKEY=""
 app_dir=""
-adminPWD="123456789"
-mysqlPWD="123456789"
+adminPWD=""
+mysqlPWD=""
+DBPassword=""
 INTERNET_STATUS="DOWN"
 installationType="Install"
 JavaVersion="461"
+DBPASSFILE="/root/.parsvt-db.pwd"
+CRONFILE="/var/spool/cron/root"
+if [ -x /usr/bin/dnf ]; then
+	PKG="dnf"
+else
+	PKG="yum"
+fi
 output() {
 	echo -e "$1"
+}
+die() {
+	output "$1"
+	output "\n${Red}The operation aborted!${Color_Off}"
+	output "${Yellow}www.parsvt.com${Color_Off}\n"
+	exit 1
+}
+urlEncode() {
+	local string="$1" encoded="" char index
+	for ((index = 0; index < ${#string}; index++)); do
+		char="${string:index:1}"
+		case "$char" in
+			[a-zA-Z0-9.~_-])
+				encoded+="$char"
+				;;
+			*)
+				printf -v char '%%%02X' "'$char"
+				encoded+="$char"
+				;;
+		esac
+	done
+	printf '%s' "$encoded"
+}
+randomPassword() {
+	local length="${1:-16}"
+	LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c "$length"
+}
+downloadFile() {
+	local path="$1" destination="$2" url
+	for url in "https://${primarySite}${path}" "http://${primarySite}${path}"; do
+		if wget -q --timeout=60 --tries=2 -O "$destination" "$url" 2>/dev/null; then
+			if [ -s "$destination" ]; then
+				return 0
+			fi
+		fi
+	done
+	rm -f "$destination"
+	return 1
+}
+addCronJob() {
+	local entry="$1" pattern="$2"
+	mkdir -p "$(dirname "$CRONFILE")" 2>/dev/null || true
+	touch "$CRONFILE"
+	if [ -n "$pattern" ] && grep -Fq "$pattern" "$CRONFILE" 2>/dev/null; then
+		return 0
+	fi
+	if [ -s "$CRONFILE" ] && [ -n "$(tail -c 1 "$CRONFILE")" ]; then
+		printf '\n' >>"$CRONFILE"
+	fi
+	printf '%s\n' "$entry" >>"$CRONFILE"
+}
+saveDBPassword() {
+	(
+		umask 077
+		printf '%s' "$DBPassword" >"$DBPASSFILE"
+	)
+	chmod 600 "$DBPASSFILE" 2>/dev/null || true
+}
+mysqlExec() {
+	MYSQL_PWD="$(cat "$DBPASSFILE" 2>/dev/null)" mysql --host="$DBHOST" --user="$DBUSER" --default-character-set=utf8mb4 "$@"
+}
+mysqldumpExec() {
+	MYSQL_PWD="$(cat "$DBPASSFILE" 2>/dev/null)" mysqldump --host="$DBHOST" --user="$DBUSER" "$@"
+}
+setIniDirective() {
+	local directive="$1" value="$2" temporary
+	[ -f "$PHPINI" ] || return 0
+	temporary=$(mktemp "${PHPINI}.XXXXXX") || return 1
+	if ! awk -v key="$directive" -v val="$value" '
+		{
+			line = $0
+			trimmed = line
+			sub(/^[ \t]*;?[ \t]*/, "", trimmed)
+			name = trimmed
+			sub(/[ \t]*=.*/, "", name)
+			if (name == key) {
+				print key " = " val
+				found = 1
+				next
+			}
+			print line
+		}
+		END {
+			if (!found) {
+				print key " = " val
+			}
+		}
+	' "$PHPINI" >"$temporary"; then
+		rm -f "$temporary"
+		return 1
+	fi
+	cat "$temporary" >"$PHPINI"
+	rm -f "$temporary"
 }
 startInstallation() {
 	echo -e "\nPlease enter the item number you want to use:"
@@ -46,7 +146,7 @@ startInstallation() {
 	echo -e "[${Cyan}6${Color_Off}] ${Cyan}Upgrade PHP to 8.3 (run '2' before and after this)${Color_Off}"
 	echo -e "[${Yellow}7${Color_Off}] ${Yellow}Install ParsVT CRM (national internet)${Color_Off}"
 	echo -e "[${Yellow}0${Color_Off}] ${Yellow}Cancel installation${Color_Off}\n"
-	read -p "Please select an action (1-7): " run
+	read -r -p "Please select an action (1-7): " run || exit
 	if [ "$run" == "1" ]; then
 		installationType="Install"
 	elif [ "$run" == "2" ]; then
@@ -70,31 +170,43 @@ startInstallation() {
 	fi
 }
 checkInternetConnection() {
-	TIMESTAMP=$(date +%s)
-	set +e
+	local host="8.8.8.8" http_status=1
 	if [ "$installationType" = "Install2" ]; then
-		ping -c 1 -W 1 aweb.co >/dev/null 2>&1
-	else
-		ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1
+		host="$primarySite"
 	fi
-	set -e
-	if [ $(($(date +%s) - $TIMESTAMP)) -eq 0 ]; then
-		echo -e "\n${Green}Internet connection is UP - $(date +%Y-%m-%d_%H:%M:%S_%Z) - $(($(date +%s) - $TIMESTAMP))${Color_Off}"
+	if ping -c 1 -W 3 "$host" >/dev/null 2>&1; then
+		echo -e "\n${Green}Internet connection is UP - $(date +%Y-%m-%d_%H:%M:%S_%Z)${Color_Off}"
 		INTERNET_STATUS="UP"
-	else
-		echo -e "\n${Red}Internet connection is DOWN - $(date +%Y-%m-%d_%H:%M:%S_%Z) - $(($(date +%s) - $TIMESTAMP))${Color_Off}"
-		INTERNET_STATUS="DOWN"
-		output "Please check the server's internet connection and DNS settings and run the installer again."
-		output "\n${Red}The operation aborted!${Color_Off}"
-		output "${Yellow}www.parsvt.com${Color_Off}\n"
-		exit
+		return 0
 	fi
+	if command -v curl >/dev/null 2>&1; then
+		if curl -fsS --max-time 15 -o /dev/null "http://${primarySite}/ip.php" 2>/dev/null; then
+			http_status=0
+		fi
+	elif command -v wget >/dev/null 2>&1; then
+		if wget -q --timeout=15 --spider "http://${primarySite}/ip.php" 2>/dev/null; then
+			http_status=0
+		fi
+	fi
+	if [ "$http_status" -eq 0 ]; then
+		echo -e "\n${Green}Internet connection is UP - $(date +%Y-%m-%d_%H:%M:%S_%Z)${Color_Off}"
+		INTERNET_STATUS="UP"
+		return 0
+	fi
+	echo -e "\n${Red}Internet connection is DOWN - $(date +%Y-%m-%d_%H:%M:%S_%Z)${Color_Off}"
+	INTERNET_STATUS="DOWN"
+	output "Please check the server's internet connection and DNS settings and run the installer again."
+	output "\n${Red}The operation aborted!${Color_Off}"
+	output "${Yellow}www.parsvt.com${Color_Off}\n"
+	exit
 }
 setDNS() {
-	read -p "Do you want to use Shecan as DNS during installation? (y/n): " rundns
+	read -r -p "Do you want to use Shecan as DNS during installation? (y/n): " rundns || exit
 	if [ "$rundns" = "y" ] || [ "$rundns" = "yes" ] || [ "$rundns" = "Y" ] || [ "$rundns" = "Yes" ] || [ "$rundns" = "YES" ] || [ "$rundns" = "1" ]; then
-		mv -n /etc/resolv.conf /etc/resolv.conf.parsvt
-		echo -e "nameserver ${shecanDNS1}\nnameserver ${shecanDNS2}\n" >/etc/resolv.conf
+		if [ ! -e /etc/resolv.conf.parsvt ]; then
+			cp -p /etc/resolv.conf /etc/resolv.conf.parsvt 2>/dev/null || true
+		fi
+		printf 'nameserver %s\nnameserver %s\n' "$shecanDNS1" "$shecanDNS2" >/etc/resolv.conf
 	elif [ "$rundns" = "n" ] || [ "$rundns" = "no" ] || [ "$rundns" = "N" ] || [ "$rundns" = "No" ] || [ "$rundns" = "NO" ] || [ "$rundns" = "0" ]; then
 		echo -e "${Yellow}OK!${Color_Off}"
 	else
@@ -103,39 +215,43 @@ setDNS() {
 }
 restoreDNS() {
 	if [ -e /etc/resolv.conf.parsvt ]; then
-		mv /etc/resolv.conf.parsvt /etc/resolv.conf
+		cat /etc/resolv.conf.parsvt >/etc/resolv.conf 2>/dev/null || cp -f /etc/resolv.conf.parsvt /etc/resolv.conf 2>/dev/null || true
+		rm -f /etc/resolv.conf.parsvt
 	fi
 }
 getLicense() {
-	read -p "Please enter your ParsVT CRM license key: " LICENSEKEY
+	read -r -p "Please enter your ParsVT CRM license key: " LICENSEKEY || exit
 	LICENSEKEY=${LICENSEKEY//[[:blank:]]/}
 }
 precheckLicense() {
-	chrlen=${#LICENSEKEY}
-	if [[ $chrlen -ne 26 ]] && [[ $chrlen -ne 25 ]]; then
-		echo -e "${Red}The license key is invalid!${Color_Off}"
-		checkLicense
+	local chrlen=${#LICENSEKEY}
+	if [ "$chrlen" -ne 26 ] && [ "$chrlen" -ne 25 ]; then
+		return 1
 	fi
-	if [[ ${LICENSEKEY:0:6} != \ParsVT ]] && [[ ${LICENSEKEY:0:5} != \Cloud ]]; then
-		echo -e "${Red}The license key is invalid!${Color_Off}"
-		checkLicense
+	if [[ $LICENSEKEY != ParsVT* ]] && [[ $LICENSEKEY != Cloud* ]]; then
+		return 1
 	fi
+	return 0
 }
 checkLicense() {
-	if [[ $counter -gt 3 ]]; then
-		echo -e "\n${Red}The number of incorrect entries exceeded!${Color_Off}"
-		echo -e "\n${Red}The operation aborted!${Color_Off}"
-		echo -e "${Yellow}www.parsvt.com${Color_Off}\n"
-		exit
-	fi
-	counter=$((counter + 1))
-	getLicense
-	precheckLicense
+	while true; do
+		if [ "$counter" -ge 3 ]; then
+			echo -e "\n${Red}The number of incorrect entries exceeded!${Color_Off}"
+			echo -e "\n${Red}The operation aborted!${Color_Off}"
+			echo -e "${Yellow}www.parsvt.com${Color_Off}\n"
+			exit
+		fi
+		getLicense
+		if precheckLicense; then
+			return 0
+		fi
+		echo -e "${Red}The license key is invalid!${Color_Off}"
+		counter=$((counter + 1))
+	done
 }
 setAdminPassword() {
-	adminPWD=$(date +%s | sha256sum | base64 | head -c 32)
-	adminPWD=${adminPWD:0:15}
-	mysqlPWD=$(php -r "echo crypt('$adminPWD', 'ad');")
+	adminPWD=$(randomPassword 15)
+	mysqlPWD=$(ADMINPW="$adminPWD" php -r 'echo crypt(getenv("ADMINPW"), "ad");' 2>/dev/null) || die "${Red}Failed to generate the CRM admin password hash!${Color_Off}"
 }
 removeMySQL() {
 	MYSQLFOLDER="/var/lib/mysql"
@@ -147,15 +263,21 @@ removeMySQL() {
 getPHPConfigPath() {
 	PHPINI="/etc/php.ini"
 	if [ ! -f "$PHPINI" ]; then
-		PHPINI=$(php -r 'print php_ini_loaded_file();')
+		PHPINI=$(php -r 'echo php_ini_loaded_file();' 2>/dev/null || true)
 	fi
+	if [ -z "$PHPINI" ] || [ ! -f "$PHPINI" ]; then
+		PHPINI="/etc/php.ini"
+		return 1
+	fi
+	return 0
 }
 restartApache() {
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		systemctl restart httpd
-		set +e
-		systemctl restart php-fpm
-		set -e
+		systemctl restart httpd || die "${Red}Apache (httpd) failed to restart!${Color_Off}"
+		if systemctl cat php-fpm >/dev/null 2>&1; then
+			systemctl enable php-fpm >/dev/null 2>&1 || true
+			systemctl restart php-fpm >/dev/null 2>&1 || output "${Yellow}Warning: php-fpm failed to restart!${Color_Off}"
+		fi
 	else
 		service httpd restart
 	fi
@@ -168,7 +290,10 @@ restartDatabase() {
 	fi
 }
 disableSELinux() {
-	STATUS=$(getenforce)
+	local STATUS="Disabled"
+	if command -v getenforce >/dev/null 2>&1; then
+		STATUS=$(getenforce 2>/dev/null || echo "Disabled")
+	fi
 	if [ "$STATUS" = "disabled" ] || [ "$STATUS" = "Disabled" ]; then
 		if [ "$installationType" = "Install2" ]; then
 			output "${Green}SELinux is already disabled!${Color_Off}"
@@ -181,374 +306,331 @@ disableSELinux() {
 		else
 			output "\n${Cyan}Disabling SELinux...${Color_Off}"
 		fi
-		setenforce 0
-		sed -i -e 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
-		sed -i -e 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
+		setenforce 0 >/dev/null 2>&1 || true
+		if [ -f /etc/selinux/config ]; then
+			sed -i -e 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+			sed -i -e 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
+		fi
 		output "${Green}SELinux successfully disabled!${Color_Off}"
 	fi
 }
 updatePackage() {
-	if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
+	if grep -qw "CentOS" /etc/redhat-release 2>/dev/null; then
 		if ! { [ "$major" = "9" ] || [ "$major" = "10" ]; }; then
 			output "\n${Cyan}Fixing deprecated CentOS repositories...${Color_Off}"
-			set +e
-			sed -i 's/mirror.centos.org/vault.centos.org/g' /etc/yum.repos.d/CentOS-*.repo
-			sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/CentOS-*.repo
-			sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/CentOS-*.repo
-			set -e
+			sed -i 's/mirror.centos.org/vault.centos.org/g' /etc/yum.repos.d/CentOS-*.repo 2>/dev/null || true
+			sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/CentOS-*.repo 2>/dev/null || true
+			sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/CentOS-*.repo 2>/dev/null || true
 			output "${Green}Deprecated CentOS repositories successfully fixed!${Color_Off}"
 		fi
 	fi
 	if [ "$installationType" = "Install2" ]; then
-		if grep -rnwq "/etc/redhat-release" -e "AlmaLinux"; then
+		if grep -qw "AlmaLinux" /etc/redhat-release 2>/dev/null; then
 			output "\n${Cyan}Fixing AlmaLinux repositories...${Color_Off}"
-			sed -i 's/repo.almalinux.org/mirror.mobinhost.com/g' /etc/yum.repos.d/almalinux-*.repo
-			sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/almalinux-*.repo
-			sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/almalinux-*.repo
+			sed -i 's/repo.almalinux.org/mirror.mobinhost.com/g' /etc/yum.repos.d/almalinux-*.repo 2>/dev/null || true
+			sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/almalinux-*.repo 2>/dev/null || true
+			sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/almalinux-*.repo 2>/dev/null || true
 			if [ -f "/etc/yum.repos.d/epel.repo" ]; then
-				sed -i 's/download.example\/pub/mirror.mobinhost.com/g' /etc/yum.repos.d/epel*.repo
-				sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/epel*.repo
-				sed -i 's/^metalink=http/#metalink=http/g' /etc/yum.repos.d/epel*.repo
+				sed -i 's/download.example\/pub/mirror.mobinhost.com/g' /etc/yum.repos.d/epel*.repo 2>/dev/null || true
+				sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/epel*.repo 2>/dev/null || true
+				sed -i 's/^metalink=http/#metalink=http/g' /etc/yum.repos.d/epel*.repo 2>/dev/null || true
 			fi
 			if [ -f "/etc/yum.repos.d/remi.repo" ]; then
-				sed -i 's/rpms.remirepo.net/mirror.aweb.co\/remi/g' /etc/yum.repos.d/remi*.repo
-				sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/remi*.repo
-				sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/remi*.repo
-				sed -i 's/baseurl=https/baseurl=http/g' /etc/yum.repos.d/remi*.repo
+				sed -i 's/rpms.remirepo.net/mirror.aweb.co\/remi/g' /etc/yum.repos.d/remi*.repo 2>/dev/null || true
+				sed -i 's/^#.*baseurl=http/baseurl=http/g' /etc/yum.repos.d/remi*.repo 2>/dev/null || true
+				sed -i 's/^mirrorlist=http/#mirrorlist=http/g' /etc/yum.repos.d/remi*.repo 2>/dev/null || true
+				sed -i 's/baseurl=https/baseurl=http/g' /etc/yum.repos.d/remi*.repo 2>/dev/null || true
 			fi
 			output "${Green}AlmaLinux repositories successfully fixed!${Color_Off}"
 		fi
 	fi
-	if [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		if grep -rnwq "/etc/redhat-release" -e "CentOS"; then
-			if ! grep -rnwq "/etc/redhat-release" -e "Stream"; then
-				output "\n${Cyan}Converting from CentOS Linux to CentOS Stream...${Color_Off}"
-				dnf --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos -y
-				dnf distro-sync -y
-				output "${Green}CentOS successfully converted!${Color_Off}\n"
-				output "${Cyan}Updating installed packages...${Color_Off}"
-				yum install --skip-broken dnf dnf-plugins-core -y
-				if [ "$installationType" = "Install" ]; then
-					dnf update --skip-broken -y
-				else
-					if [ "$major" = "8" ]; then
-						dnf update --skip-broken --nobest -y
-					else
-						dnf update --skip-broken -y
-					fi
-				fi
-				output "${Green}Installed packages successfully updated!${Color_Off}"
-			else
-				output "\n${Cyan}Updating installed packages...${Color_Off}"
-				yum install --skip-broken dnf dnf-plugins-core -y
-				if [ "$installationType" = "Install" ]; then
-					dnf update --skip-broken -y
-				else
-					if [ "$major" = "8" ]; then
-						dnf update --skip-broken --nobest -y
-					else
-						dnf update --skip-broken -y
-					fi
-				fi
-				output "${Green}Installed packages successfully updated!${Color_Off}"
-			fi
-		else
-			output "\n${Cyan}Updating installed packages...${Color_Off}"
-			yum install --skip-broken dnf dnf-plugins-core -y
-			dnf update --skip-broken -y
-			output "${Green}Installed packages successfully updated!${Color_Off}"
+	output "\n${Cyan}Updating installed packages...${Color_Off}"
+	if [ "$PKG" = "dnf" ]; then
+		if grep -qw "CentOS" /etc/redhat-release 2>/dev/null && ! grep -qw "Stream" /etc/redhat-release 2>/dev/null; then
+			output "${Cyan}Converting from CentOS Linux to CentOS Stream...${Color_Off}"
+			dnf --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos -y || true
+			dnf distro-sync -y || true
+			output "${Green}CentOS successfully converted!${Color_Off}\n"
 		fi
-	elif [ "$major" = "7" ]; then
-		output "\n${Cyan}Updating installed packages...${Color_Off}"
-		yum install --skip-broken dnf dnf-plugins-core -y
-		dnf update --skip-broken -y
-		output "${Green}Installed packages successfully updated!${Color_Off}"
+		dnf install --skip-broken dnf dnf-plugins-core -y || true
+		if [ "$major" = "8" ]; then
+			dnf update --skip-broken --nobest -y || true
+		else
+			dnf update --skip-broken -y || true
+		fi
 	else
-		output "\n${Cyan}Updating installed packages...${Color_Off}"
-		yum update --skip-broken -y
-		output "${Green}Installed packages successfully updated!${Color_Off}"
+		yum update --skip-broken -y || true
 	fi
+	output "${Green}Installed packages successfully updated!${Color_Off}"
 }
 installPackage() {
 	output "\n${Cyan}Installing required packages...${Color_Off}"
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		dnf install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata chrony bind-utils -y
+		dnf install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata chrony bind-utils -y || true
 	else
-		yum install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata ntp ntpdate ntp-doc bind-utils -y
+		yum install --skip-broken wget curl expect psmisc net-tools yum-utils zip unzip tar crontabs tzdata ntp ntpdate ntp-doc bind-utils -y || true
 	fi
 	if [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		dnf install --skip-broken initscripts -y
+		dnf install --skip-broken initscripts -y || true
 	fi
 	output "${Green}Required packages successfully installed!${Color_Off}\n"
 }
 installIonCube() {
 	cd /tmp
-	rm -rf ioncube_loaders_lin*.tar.gz*
+	rm -rf ioncube_loaders_lin*.tar.gz* ioncube
 	if [ "$ARCH" = "x86_64" ]; then
-		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86-64.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
+		if ! downloadFile "/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86-64.tar.gz" "ioncube_loaders_lin_x86-64.tar.gz"; then
+			cd /root
+			die "${Red}Unable to download the ionCube loader package!${Color_Off}"
+		fi
 	else
-		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86.tar.gz -O ioncube_loaders_lin_x86-64.tar.gz
+		if ! downloadFile "/modules/addons/easyservice/Installer/ioncube_loaders_lin_x86.tar.gz" "ioncube_loaders_lin_x86-64.tar.gz"; then
+			cd /root
+			die "${Red}Unable to download the ionCube loader package!${Color_Off}"
+		fi
 	fi
-	tar xfz ioncube_loaders_lin_x86-64.tar.gz
+	if ! tar xfz ioncube_loaders_lin_x86-64.tar.gz; then
+		cd /root
+		die "${Red}The ionCube loader package is corrupted!${Color_Off}"
+	fi
 	PHP_CONFD="/etc/php.d"
-	PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+	PHP_VERSION=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
 	if [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		PHP_EXT_DIR=$(php -r "echo ini_get('extension_dir');")
+		PHP_EXT_DIR=$(php -r 'echo ini_get("extension_dir");')
 	else
-		PHP_EXT_DIR=$(php-config --extension-dir)
+		PHP_EXT_DIR=$(php-config --extension-dir 2>/dev/null || php -r 'echo ini_get("extension_dir");')
 	fi
-	cp "ioncube/ioncube_loader_lin_${PHP_VERSION}.so" $PHP_EXT_DIR
-	echo "zend_extension = ${PHP_EXT_DIR}/ioncube_loader_lin_${PHP_VERSION}.so" >"${PHP_CONFD}/00-ioncube.ini"
-	rm -rf ./ioncube
-	rm -rf ioncube_loaders_lin*.tar.gz*
+	if [ ! -f "ioncube/ioncube_loader_lin_${PHP_VERSION}.so" ]; then
+		cd /root
+		die "${Red}ionCube loader is not available for PHP ${PHP_VERSION}!${Color_Off}"
+	fi
+	mkdir -p "$PHP_EXT_DIR" "$PHP_CONFD"
+	cp -f "ioncube/ioncube_loader_lin_${PHP_VERSION}.so" "$PHP_EXT_DIR"/
+	printf 'zend_extension = %s/ioncube_loader_lin_%s.so\n' "$PHP_EXT_DIR" "$PHP_VERSION" >"${PHP_CONFD}/00-ioncube.ini"
+	rm -rf ./ioncube ioncube_loaders_lin*.tar.gz*
 	cd /root
 	restartApache
 }
 installTimezonedb() {
-	getPHPConfigPath
-	if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
-		output "${Cyan}Installing timezonedb extension...${Color_Off}"
-		cd /tmp
-		rm -rf timezonedb*
-		mkdir -p timezonedb
-		cd timezonedb
-		wget --no-check-certificate http://$primarySite/modules/addons/easyservice/Installer/timezonedb-2026.6.tgz -O timezonedb-2026.6.tgz
-		pear install timezonedb-2026.6.tgz
-		if ! grep -rnwq "$PHPINI" -e "extension=timezonedb.so"; then
-			sed -i '/extension=<ext>) syntax./a extension=timezonedb.so' $PHPINI
-		fi
-		rm -rf timezonedb*
-		cd /root
-		restartApache
-		date
-		hwclock
-		output "${Green}timezonedb extension successfully installed!${Color_Off}\n"
-	else
-		output "${Green}timezonedb extension is already installed!${Color_Off}\n"
+	if ! getPHPConfigPath; then
+		output "${Red}PHP configuration file (php.ini) was not found!${Color_Off}"
+		output "${Yellow}Skipping the timezonedb installation.${Color_Off}\n"
+		return 0
 	fi
+	if grep -q "extension=timezonedb.so" "$PHPINI"; then
+		output "${Green}timezonedb extension is already installed!${Color_Off}\n"
+		return 0
+	fi
+	output "${Cyan}Installing timezonedb extension...${Color_Off}"
+	cd /tmp
+	rm -rf timezonedb*
+	mkdir -p timezonedb
+	cd timezonedb
+	if ! downloadFile "/modules/addons/easyservice/Installer/timezonedb-2026.6.tgz" "timezonedb-2026.6.tgz"; then
+		cd /root
+		rm -rf /tmp/timezonedb*
+		die "${Red}Unable to download the timezonedb package!${Color_Off}"
+	fi
+	pear install timezonedb-2026.6.tgz || output "${Yellow}Warning: pear reported an error while installing timezonedb!${Color_Off}"
+	if ! grep -q "extension=timezonedb.so" "$PHPINI"; then
+		printf '\n; Added by the ParsVT installer\nextension=timezonedb.so\n' >>"$PHPINI"
+	fi
+	rm -rf /tmp/timezonedb*
+	cd /root
+	restartApache
+	date
+	if command -v hwclock >/dev/null 2>&1; then
+		hwclock >/dev/null 2>&1 || true
+	fi
+	output "${Green}timezonedb extension successfully installed!${Color_Off}\n"
 }
 setRequirements() {
 	output "${Cyan}Setting ParsVT requirements...${Color_Off}"
-	getPHPConfigPath
-	sed -i -e 's/max_execution_time = 30/max_execution_time = 600/g' $PHPINI
-	sed -i -e 's/memory_limit = 128M/memory_limit = 512M/g' $PHPINI
-	sed -i -e 's/allow_call_time_pass_reference = Off/allow_call_time_pass_reference = On/g' $PHPINI
-	sed -i -e 's/short_open_tag = Off/short_open_tag = On/g' $PHPINI
-	sed -i -e 's/;max_input_vars = 1000/max_input_vars = 10000/g' $PHPINI
-	sed -i -e 's/; max_input_vars = 1000/max_input_vars = 10000/g' $PHPINI
-	sed -i -e 's/log_errors = Off/log_errors = On/g' $PHPINI
-	sed -i -e 's/display_errors = On/display_errors = Off/g' $PHPINI
-	sed -i -e 's/error_reporting = E_ALL \& ~E_DEPRECATED \& ~E_STRICT/error_reporting = E_ALL \& ~E_NOTICE \& ~E_WARNING \& ~E_DEPRECATED \& ~E_STRICT/g' $PHPINI
-	sed -i -e 's/output_buffering = Off/output_buffering = 4096/g' $PHPINI
-	sed -i -e 's/file_uploads = Off/file_uploads = On/g' $PHPINI
-	sed -i -e 's/post_max_size = 8M/post_max_size = 128M/g' $PHPINI
-	sed -i -e 's/upload_max_filesize = 2M/upload_max_filesize = 128M/g' $PHPINI
-	if ! grep -rnwq "$PHPINI" -e "max_input_time = 600"; then
-		sed -i -e 's/max_input_time = 60/max_input_time = 600/g' $PHPINI
+	if ! getPHPConfigPath; then
+		die "${Red}PHP configuration file (php.ini) was not found!${Color_Off}"
 	fi
-	sed -i -e 's/zlib.output_compression = On/zlib.output_compression = Off/g' $PHPINI
-	sed -i -e 's/session.gc_maxlifetime = 1440/session.gc_maxlifetime = 21600/g' $PHPINI
-	sed -i -e 's/session.gc_divisor = 500/session.gc_divisor = 1000/g' $PHPINI
-	sed -i -e 's/session.gc_probability = 0/session.gc_probability = 1/g' $PHPINI
-	if ! grep -rnwq "$PHPINI" -e "default_socket_timeout = 600"; then
-		sed -i -e 's/default_socket_timeout = 60/default_socket_timeout = 600/g' $PHPINI
+	setIniDirective max_execution_time 600
+	setIniDirective memory_limit 512M
+	setIniDirective short_open_tag On
+	setIniDirective max_input_vars 10000
+	setIniDirective log_errors On
+	setIniDirective display_errors Off
+	setIniDirective error_reporting "E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED & ~E_STRICT"
+	setIniDirective output_buffering 4096
+	setIniDirective file_uploads On
+	setIniDirective post_max_size 128M
+	setIniDirective upload_max_filesize 128M
+	setIniDirective max_input_time 600
+	setIniDirective zlib.output_compression Off
+	setIniDirective session.gc_maxlifetime 21600
+	setIniDirective session.gc_divisor 1000
+	setIniDirective session.gc_probability 1
+	setIniDirective default_socket_timeout 600
+	setIniDirective date.timezone Asia/Tehran
+	setIniDirective session.use_strict_mode 1
+	setIniDirective session.cookie_httponly 1
+	setIniDirective expose_php Off
+	if grep -qE "^[[:space:]]*session\.cookie_secure[[:space:]]*=[[:space:]]*1" "$PHPINI"; then
+		sed -i -r 's|^[[:space:]]*session\.cookie_secure[[:space:]]*=.*|;session.cookie_secure =|' "$PHPINI"
 	fi
-	sed -i -e 's/;date.timezone =/date.timezone = "Asia\/Tehran"/g' $PHPINI
-	sed -i -e 's/session.use_strict_mode = 0/session.use_strict_mode = 1/g' $PHPINI
-	sed -i -e 's/session.cookie_httponly =/session.cookie_httponly = 1/g' $PHPINI
-	sed -i -e 's/session.cookie_secure = 1/;session.cookie_secure =/g' $PHPINI
-	sed -i -e 's/expose_php = On/expose_php = Off/g' $PHPINI
 	httpdfile="/etc/httpd/conf/httpd.conf"
 	if [ -f "$httpdfile" ]; then
-		#sed -i -e 's/CustomLog "logs\/access_log" combined/#CustomLog "logs\/access_log" combined/g' /etc/httpd/conf/httpd.conf
-		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/httpd/conf/httpd.conf
-		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "TimeOut"; then
-			sed -i '/Listen 80/a Timeout 600' /etc/httpd/conf/httpd.conf
+		sed -i '/<Directory "\/var\/www\/html">/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' "$httpdfile"
+		if ! grep -qiE '^[[:space:]]*Timeout[[:space:]]' "$httpdfile"; then
+			printf '\nTimeout 600\n' >>"$httpdfile"
 		fi
-		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "ServerTokens"; then
-			sed -i '/Timeout 600/a ServerTokens Prod' /etc/httpd/conf/httpd.conf
+		if ! grep -qiE '^[[:space:]]*ServerTokens[[:space:]]' "$httpdfile"; then
+			printf 'ServerTokens Prod\n' >>"$httpdfile"
 		fi
-		if ! grep -rnwq "/etc/httpd/conf/httpd.conf" -e "ServerSignature"; then
-			sed -i '/ServerTokens Prod/a ServerSignature Off' /etc/httpd/conf/httpd.conf
+		if ! grep -qiE '^[[:space:]]*ServerSignature[[:space:]]' "$httpdfile"; then
+			printf 'ServerSignature Off\n' >>"$httpdfile"
 		fi
 	fi
-	#sslfile="/etc/httpd/conf.d/ssl.conf"
-	#if [ -f "$sslfile" ]; then
-	#	sed -i -e 's/CustomLog logs\/ssl_request_log/#CustomLog logs\/ssl_request_log/g' /etc/httpd/conf.d/ssl.conf
-	#fi
-	#wwwfile="/etc/php-fpm.d/www.conf"
-	#if [ -f "$wwwfile" ]; then
-	#	sed -i -e 's/php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/;php_admin_value\[error_log\] = \/var\/log\/php-fpm\/www-error.log/g' /etc/php-fpm.d/www.conf
-	#	sed -i -e 's/php_admin_flag\[log_errors\] = on/;php_admin_flag\[log_errors\] = on/g' /etc/php-fpm.d/www.conf
-	#fi
 	restartApache
 	output "${Green}ParsVT requirements have been set!${Color_Off}\n"
 }
+installJavaPackages() {
+	local arch="x64"
+	if [ "$ARCH" != "x86_64" ]; then
+		arch="i586"
+	fi
+	"$PKG" install --skip-broken "http://files.aweb.asia/JAVA/jdk-8u${JavaVersion}-linux-${arch}.rpm" -y || true
+	"$PKG" install --skip-broken "http://files.aweb.asia/JAVA/jre-8u${JavaVersion}-linux-${arch}.rpm" -y || true
+}
 installJava() {
-	if java -version 2>&1 >/dev/null | grep -q "java version \"1.8.0_$JavaVersion\""; then
+	if java -version 2>&1 | grep -q "1\.8\.0_"; then
 		output "${Green}Java libraries are already installed!${Color_Off}\n"
-	else
-		if java -version 2>&1 >/dev/null | grep -q "java version"; then
-			output "${Cyan}Updating Java libraries...${Color_Off}"
-			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-				if [ "$ARCH" = "x86_64" ]; then
-					dnf install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
-					dnf install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
-				else
-					dnf install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
-					dnf install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
-				fi
-			else
-				if [ "$ARCH" = "x86_64" ]; then
-					yum install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
-					yum install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
-				else
-					yum install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
-					yum install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
-				fi
-			fi
-			if java -version 2>&1 >/dev/null | grep -q "java version \"1.8.0_$JavaVersion\""; then
-				output "${Green}Java libraries successfully updated!${Color_Off}\n"
-			else
-				output "${Red}Java libraries failed to update!${Color_Off}\n"
-			fi
+	elif java -version 2>&1 | grep -q "java version"; then
+		output "${Cyan}Updating Java libraries...${Color_Off}"
+		installJavaPackages
+		if java -version 2>&1 | grep -q "1\.8\.0_"; then
+			output "${Green}Java libraries successfully updated!${Color_Off}\n"
 		else
-			output "${Cyan}Installing Java libraries...${Color_Off}"
-			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-				if [ "$ARCH" = "x86_64" ]; then
-					dnf install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
-					dnf install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
-				else
-					dnf install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
-					dnf install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
-				fi
-			else
-				if [ "$ARCH" = "x86_64" ]; then
-					yum install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-x64.rpm -y
-					yum install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-x64.rpm -y
-				else
-					yum install --skip-broken http://files.aweb.asia/JAVA/jdk-8u$JavaVersion-linux-i586.rpm -y
-					yum install --skip-broken http://files.aweb.asia/JAVA/jre-8u$JavaVersion-linux-i586.rpm -y
-				fi
-			fi
-			if java -version 2>&1 >/dev/null | grep -q "java version \"1.8.0_$JavaVersion\""; then
-				output "${Green}Java libraries successfully installed!${Color_Off}\n"
-			else
-				output "${Red}Java libraries failed to install!${Color_Off}"
-				output "You have to install JDK and JRE 1.8 or higher manually."
-				output "\n${Red}The operation aborted!${Color_Off}"
-				output "${Yellow}www.parsvt.com${Color_Off}\n"
-				exit
-			fi
+			output "${Red}Java libraries failed to update!${Color_Off}\n"
+		fi
+	else
+		output "${Cyan}Installing Java libraries...${Color_Off}"
+		installJavaPackages
+		if java -version 2>&1 | grep -q "1\.8\.0_"; then
+			output "${Green}Java libraries successfully installed!${Color_Off}\n"
+		else
+			output "${Red}Java libraries failed to install!${Color_Off}"
+			output "You have to install JDK and JRE 1.8 or higher manually."
+			output "\n${Red}The operation aborted!${Color_Off}"
+			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			exit
 		fi
 	fi
 }
 openPorts() {
 	output "${Cyan}Opening required firewall ports...${Color_Off}"
+	local ports="80 443 143 993 110 995 22 25 2525 587 465 3306 5038 9999 7777 2222 8080 8081 8443 10000"
+	local services="http https imaps ssh smtp ntp"
+	local port service
 	if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
-		systemctl is-active --quiet firewalld && systemctl enable firewalld
-		systemctl is-active --quiet firewalld && systemctl restart firewalld
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=http
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=https
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=imaps
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=ssh
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=smtp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-service=ntp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=80/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=443/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=143/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=993/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=110/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=995/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=22/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=25/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=2525/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=587/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=465/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=3306/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=5038/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=9999/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=7777/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=2222/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=8080/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=8081/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=8443/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --zone=public --permanent --add-port=10000/tcp
-		systemctl is-active --quiet firewalld && firewall-cmd --reload
+		if systemctl is-active --quiet firewalld; then
+			systemctl enable firewalld >/dev/null 2>&1 || true
+			for service in $services; do
+				firewall-cmd --zone=public --permanent --add-service="$service" >/dev/null 2>&1 || true
+			done
+			for port in $ports; do
+				firewall-cmd --zone=public --permanent --add-port="${port}/tcp" >/dev/null 2>&1 || true
+			done
+			firewall-cmd --reload >/dev/null 2>&1 || true
+		fi
 	else
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 80 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 443 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 143 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 993 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 110 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 995 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 25 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 2525 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 587 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 465 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 3306 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 5038 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 9999 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 7777 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 2222 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 8080 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 8081 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 8443 -j ACCEPT
-		systemctl is-active --quiet iptables && iptables -A INPUT -p tcp -m tcp --dport 10000 -j ACCEPT
-		systemctl is-active --quiet iptables && service iptables save
+		if systemctl is-active --quiet iptables; then
+			for port in $ports; do
+				iptables -C INPUT -p tcp -m tcp --dport "$port" -j ACCEPT >/dev/null 2>&1 ||
+					iptables -A INPUT -p tcp -m tcp --dport "$port" -j ACCEPT || true
+			done
+			service iptables save >/dev/null 2>&1 || true
+		fi
 	fi
 	output "${Green}Required firewall ports successfully opened!${Color_Off}"
 }
 mysqlConnection() {
-	read -p "Enter your MySQL hostname (default: $(tput bold)localhost$(tput sgr0)): " mysql_db_host
+	local mysql_db_host mysql_root_name mysql_db_name attempts=0 password_attempts=0
+	read -r -p "Enter your MySQL hostname (default: $(tput bold)localhost$(tput sgr0)): " mysql_db_host || exit
 	DBHOST="${mysql_db_host:=localhost}"
-	read -p "Enter your MySQL username (default: $(tput bold)root$(tput sgr0)): " mysql_root_name
+	read -r -p "Enter your MySQL username (default: $(tput bold)root$(tput sgr0)): " mysql_root_name || exit
 	DBUSER="${mysql_root_name:=root}"
-	read -p "Enter your MySQL password: " DBPassword
-	read -p "Enter your new MySQL database (default: $(tput bold)parsvt$(tput sgr0)): " mysql_db_name
+	while true; do
+		if [ "$password_attempts" -ge 3 ]; then
+			die "${Red}Connection failed: unable to connect to the MySQL server!${Color_Off}"
+		fi
+		read -r -s -p "Enter your MySQL password: " DBPassword || exit
+		echo
+		saveDBPassword
+		if MYSQL_PWD="$DBPassword" mysql --host="$DBHOST" --user="$DBUSER" -e "SELECT 1" >/dev/null 2>&1; then
+			output "${Green}Connection successfully established!${Color_Off}\n"
+			break
+		fi
+		output "${Red}Connection failed: unable to connect to the MySQL server!${Color_Off}"
+		password_attempts=$((password_attempts + 1))
+	done
+	read -r -p "Enter your new MySQL database (default: $(tput bold)parsvt$(tput sgr0)): " mysql_db_name || exit
 	DBNAME="${mysql_db_name:=parsvt}"
-	COMMAND="error_reporting(0); \$conn = new mysqli(\""$DBHOST"\", \""$DBUSER"\", \""$DBPassword"\"); if (\$conn->connect_error) { die(\"Connection failed: \" . \$conn->connect_error);} die(\"Connected\");"
-	mysqlresult=$(php -r "$COMMAND")
-	if [ "$mysqlresult" = "Connected" ]; then
-		output "${Green}Connection successfully established!${Color_Off}\n"
-		output "Database information:"
-		output "Database hostname: ${Yellow}${DBHOST}${Color_Off}"
-		output "Database username: ${Yellow}${DBUSER}${Color_Off}"
-		output "Database password: ${Yellow}${DBPassword}${Color_Off}"
-		output "Database name: ${Yellow}${DBNAME}${Color_Off}\n"
-		output "Setting up your new database..."
-		mysql -h ${DBHOST} -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "CREATE DATABASE IF NOT EXISTS ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
-		output "${Green}Database successfully created!${Color_Off}\n"
-	else
-		output "${Red}$mysqlresult${Color_Off}"
-		mysqlConnection
+	DBNAME="${DBNAME//[^A-Za-z0-9_]/}"
+	if [ -z "$DBNAME" ]; then
+		DBNAME="parsvt"
 	fi
+	output "Database information:"
+	output "Database hostname: ${Yellow}${DBHOST}${Color_Off}"
+	output "Database username: ${Yellow}${DBUSER}${Color_Off}"
+	output "Database password: ${Yellow}${DBPassword}${Color_Off}"
+	output "Database name: ${Yellow}${DBNAME}${Color_Off}\n"
+	output "Setting up your new database..."
+	mysqlExec -e "CREATE DATABASE IF NOT EXISTS \`${DBNAME}\` CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
+	output "${Green}Database successfully created!${Color_Off}\n"
 }
 sslDomain() {
-	read -p "Please enter your domain name (example.com): " domain
-	staticip=$(wget --no-check-certificate -O- -q "http://$primarySite/ip.php")
-	read -p "Are you sure you have created a DNS (A record) to connect the domain $(tput bold)${domain}$(tput sgr0) to the static IP $(tput bold)${staticip}$(tput sgr0)? (y/n): " confirmdomain
-	if [ "$confirmdomain" = "y" ] || [ "$confirmdomain" = "yes" ] || [ "$confirmdomain" = "Y" ] || [ "$confirmdomain" = "Yes" ] || [ "$confirmdomain" = "YES" ] || [ "$confirmdomain" = "1" ]; then
-		if [ ! -L "/var/www/$domain" ]; then
-			ln -s /var/www/html /var/www/$domain
+	local domain="" staticip="" confirmdomain=""
+	while true; do
+		read -r -p "Please enter your domain name (example.com): " domain || exit
+		domain="${domain#http://}"
+		domain="${domain#https://}"
+		domain="${domain%%/*}"
+		domain="${domain%.}"
+		if [[ $domain =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$ ]]; then
+			break
 		fi
-		wget --no-check-certificate -q http://$primarySite/modules/addons/easyservice/Installer/domain.txt -O /etc/httpd/conf.d/$domain.conf
-		sed -i -e "s/example.com/$domain/g" /etc/httpd/conf.d/$domain.conf
-		restartApache
-		certbot --apache -d $domain
-		certbot renew --dry-run
-		grep "python -c 'import random; import time; time.sleep(random.random() * 3600)' && certbot renew" /var/spool/cron/root || echo "0 0,12 * * * python -c 'import random; import time; time.sleep(random.random() * 3600)' && certbot renew" >>/var/spool/cron/root
-		restartApache
-		systemctl enable --now crond
-		systemctl daemon-reload
-		output "${Green}SSL certificate successfully installed!${Color_Off}\n"
-	else
-		sslDomain
+		output "${Red}The domain name is invalid!${Color_Off}"
+	done
+	staticip=$(wget --no-check-certificate -O- -q "http://$primarySite/ip.php" 2>/dev/null || true)
+	read -r -p "Are you sure you have created a DNS (A record) to connect the domain $(tput bold)${domain}$(tput sgr0) to the static IP $(tput bold)${staticip}$(tput sgr0)? (y/n): " confirmdomain || exit
+	case "$confirmdomain" in
+		y|Y|yes|Yes|YES|1) ;;
+		*)
+			sslDomain
+			return 0
+			;;
+	esac
+	if ! command -v certbot >/dev/null 2>&1; then
+		die "${Red}certbot is not installed!${Color_Off}"
 	fi
-}
-function string_replace {
-	echo "${1/\/\//$2}"
+	if [ -e "/var/www/$domain" ] && [ ! -L "/var/www/$domain" ]; then
+		die "${Red}/var/www/$domain already exists and it is not a symbolic link!${Color_Off}"
+	fi
+	ln -sfn "${SETUPDIR:-/var/www/html}" "/var/www/$domain"
+	if ! downloadFile "/modules/addons/easyservice/Installer/domain.txt" "/etc/httpd/conf.d/$domain.conf"; then
+		die "${Red}Unable to download the virtual host template!${Color_Off}"
+	fi
+	sed -i -e "s/example.com/$domain/g" "/etc/httpd/conf.d/$domain.conf"
+	if ! httpd -t; then
+		rm -f "/etc/httpd/conf.d/$domain.conf"
+		die "${Red}The Apache configuration is invalid!${Color_Off}"
+	fi
+	restartApache
+	if ! certbot --apache -d "$domain"; then
+		die "${Red}Failed to issue the SSL certificate for ${domain}!${Color_Off}"
+	fi
+	certbot renew --dry-run || output "${Yellow}Warning: the certificate renewal test failed, please renew the certificate manually.${Color_Off}"
+	addCronJob "0 0,12 * * * sleep \$((RANDOM % 3600)) && certbot renew -q" "certbot renew"
+	systemctl enable --now crond >/dev/null 2>&1 || true
+	systemctl daemon-reload >/dev/null 2>&1 || true
+	restartApache
+	output "${Green}SSL certificate successfully installed!${Color_Off}\n"
 }
 echo -e "\n${Yellow}██████   █████  ██████  ███████ ██    ██ ████████"
 echo -e "██   ██ ██   ██ ██   ██ ██      ██    ██    ██   "
@@ -557,16 +639,29 @@ echo -e "██      ██   ██ ██   ██      ██  ██  ██
 echo -e "██      ██   ██ ██   ██ ███████   ████      ██   \n"
 echo -e "Shell script to install ParsVT CRM on Linux."
 echo -e "Please run as root. if you are not, enter '0' now and enter 'sudo su' before running the script.${Color_Off}"
+if [ "$(id -u)" -ne 0 ]; then
+	echo -e "\n${Red}This script must be run as root!${Color_Off}"
+	echo -e "Please enter 'sudo su' and run the script again."
+	echo -e "\n${Red}The operation aborted!${Color_Off}"
+	echo -e "${Yellow}www.parsvt.com${Color_Off}\n"
+	exit
+fi
+trap 'restoreDNS' EXIT
+trap 'exit 130' INT TERM
 startInstallation
 restoreDNS
 cd /root
 if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; then
 	if [ -e /var/www/html/config.inc.php ]; then
 		output "\n${Red}VtigerCRM already exists!${Color_Off}"
-		output "Press Ctrl+C within the next 10 seconds to cancel the installation."
-		output "Otherwise, wait until the installation continues, but it will destroy the existing data!"
+		output "Continuing will ${Red}destroy the existing data${Color_Off}!"
+		read -r -p "Type 'yes' to continue, anything else cancels the installation: " confirmreset || exit
+		if [ "$confirmreset" != "yes" ]; then
+			output "\n${Red}The operation aborted!${Color_Off}"
+			output "${Yellow}www.parsvt.com${Color_Off}\n"
+			exit
+		fi
 		INSTALLTYPE="Exist"
-		sleep 10
 	fi
 	if ! { [ "$installationType" = "Install2" ]; }; then
 		checkInternetConnection
@@ -611,7 +706,7 @@ if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; 
 					output "# $COUNT - $i"
 					COUNT=$(($COUNT + 1))
 				done
-				read -p "Please select an IP address: " DEVS
+				read -r -p "Please select an IP address: " DEVS || exit
 				if [ -z "${ipsarray[$DEVS]}" ]; then
 					output "${Red}Invalid ethernet adapter!${Color_Off}"
 					output "\n${Red}The operation aborted!${Color_Off}"
@@ -630,7 +725,7 @@ if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; 
 		fi
 		output "\nParsVT CRM will be installed on ${Green}${ETH_DEV}${Color_Off}\n"
 		checkLicense
-		RESPONSE=$(curl -fs -d "licenseid=$LICENSEKEY&serverip=$ETH_DEV" -H "Content-Type: application/x-www-form-urlencoded" -X POST "http://$primarySite/modules/addons/easyservice/Installer/check.php")
+		RESPONSE=$(curl -fsS --max-time 60 -d "licenseid=$LICENSEKEY&serverip=$ETH_DEV" -H "Content-Type: application/x-www-form-urlencoded" -X POST "http://$primarySite/modules/addons/easyservice/Installer/check.php") || die "${Red}Unable to connect to the license server!${Color_Off}"
 		IFS=';' read -ra RESPONSES <<<"$RESPONSE"
 		if [ "${RESPONSES[0]}" != "Active" ] || [ "${#RESPONSES[2]}" == 0 ]; then
 			output "\nLicense key status: ${Red}${RESPONSES[0]}!${Color_Off}"
@@ -726,15 +821,15 @@ if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; 
 		if ! command -v "php" &>/dev/null; then
 			if [ "$major" = "7" ]; then
 				output "${Cyan}Installing Apache and PHP...${Color_Off}"
-				dnf install --enablerepo=remi,remi-php74 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-curl php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel unixODBC-devel make -y
+				dnf install --enablerepo=remi,remi-php83 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-curl php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel unixODBC-devel make -y
 			elif [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
 				output "${Cyan}Installing Apache and PHP...${Color_Off}"
 				dnf module reset php -y
-				dnf module install php:remi-7.4 -y
+				dnf module install php:remi-8.3 -y
 				dnf install --enablerepo=remi --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-curl php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel unixODBC-devel make -y
 			else
 				output "${Cyan}Installing Apache and PHP...${Color_Off}"
-				yum install --enablerepo=remi,remi-php74 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-curl php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel unixODBC-devel make -y
+				yum install --enablerepo=remi,remi-php83 --skip-broken httpd httpd-devel mod_ssl python-certbot-apache certbot php php-common php-zip php-gd php-mbstring php-mcrypt php-devel php-bcmath php-xml php-odbc php-pear php-imap php-curl php-ldap php-openssl php-intl php-xmlrpc php-soap php-mysql php-mysqlnd php-sqlsrv php-xz php-fpm php-pdo curl-devel unixODBC-devel make -y
 			fi
 			if [ "$major" = "6" ]; then
 				chkconfig httpd on
@@ -779,12 +874,20 @@ if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; 
 				rm -rf /root/IC.php*
 				if [ "$IONCUBE_VER" = "Ok" ]; then
 					output "Current ionCube loader version: ${Green}${IONCUBE_VERSION}${Color_Off}\n"
-					read -p "Enter the directory path of your application (default: $(tput bold)${SETUPDIR}$(tput sgr0)): " app_dir
-					SETUPDIR="/var/www/html/$app_dir"
-					SETUPDIR=$(string_replace "$SETUPDIR" "/")
-					SETUPDIR=$(string_replace "$SETUPDIR" "/")
+					read -r -p "Enter the directory path of your application (default: $(tput bold)${SETUPDIR}$(tput sgr0)): " app_dir || exit
+					app_dir="${app_dir#/}"
+					app_dir="${app_dir%/}"
+					if [ -n "$app_dir" ]; then
+						if ! [[ $app_dir =~ ^[A-Za-z0-9._/-]+$ ]] || [[ $app_dir == *".."* ]]; then
+							die "${Red}The application directory is invalid!${Color_Off}"
+						fi
+						SETUPDIR="/var/www/html/$app_dir"
+					fi
+					if [ "${SETUPDIR:0:14}" != "/var/www/html/" ] && [ "$SETUPDIR" != "/var/www/html" ]; then
+						die "${Red}The application directory must be inside /var/www/html!${Color_Off}"
+					fi
 					mkdir -p "$SETUPDIR"
-					rm -rf $SETUPDIR/*
+					rm -rf "${SETUPDIR:?}"/*
 					output "\nYour application will be installed in ${Yellow}${SETUPDIR}${Color_Off}.\n"
 				elif [ "$IONCUBE_VER" = "Upgrade" ]; then
 					output "Current ionCube loader version: ${Red}${IONCUBE_VERSION}${Color_Off}"
@@ -822,6 +925,8 @@ if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; 
 			removeMySQL
 			output "${Cyan}Installing MySQL (MariaDB)...${Color_Off}"
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
+				dnf module reset mariadb -y
+				dnf module enable mariadb:10.11 -y
 				dnf install --enablerepo=remi --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
 			else
 				yum install --enablerepo=remi --skip-broken mariadb mariadb-server mariadb-backup mariadb-common mariadb-devel galera php-mysql php-mysqlnd phpMyAdmin -y
@@ -830,8 +935,9 @@ if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; 
 			if [ -f "$pmafile" ]; then
 				sed -i '/<Directory \/usr\/share\/phpMyAdmin\/>/,/<\/Directory>/ s/Require local/Require all granted/' /etc/httpd/conf.d/phpMyAdmin.conf
 			fi
-			DBPassword=$(date +%s | sha256sum | base64 | head -c 20)
-			output "MySQL Username: ${DBUSER}\nMySQL Password: ${DBPassword}" >/root/mysql.txt
+			DBPassword=$(randomPassword 20)
+			saveDBPassword
+			(umask 077; printf 'MySQL Username: %s\nMySQL Password: %s\n' "$DBUSER" "$DBPassword" >/root/mysql.txt)
 			restartDatabase
 			restartApache
 			if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
@@ -839,10 +945,11 @@ if [ "$installationType" = "Install" ] || [ "$installationType" = "Install2" ]; 
 			else
 				chkconfig mariadb on
 			fi
-			mysqladmin -uroot create $DBNAME
+			mysqladmin -uroot create "$DBNAME" 2>/dev/null || true
+			set +e
 			if [ "$major" = "9" ] || [ "$major" = "10" ]; then
 				SECURE_MYSQL=$(expect -c "
-set timeout 10
+set timeout 60
 spawn mysql_secure_installation
 expect \"Enter current password for root (enter for none):\"
 send \"\r\"
@@ -866,7 +973,7 @@ expect eof
 ")
 			else
 				SECURE_MYSQL=$(expect -c "
-set timeout 10
+set timeout 60
 spawn mysql_secure_installation
 expect \"Enter current password for root (enter for none):\"
 send \"\r\"
@@ -887,67 +994,110 @@ send \"y\r\"
 expect eof
 ")
 			fi
+			set -e
 			echo "$SECURE_MYSQL"
-			wget --no-check-certificate -q http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf
+			if ! MYSQL_PWD="$DBPassword" mysql --user=root -e "SELECT 1" >/dev/null 2>&1; then
+				output "${Cyan}Setting the MySQL root password manually...${Color_Off}"
+				{
+					printf "ALTER USER 'root'@'localhost' IDENTIFIED BY '%s';\n" "$DBPassword"
+					printf "DELETE FROM mysql.global_priv WHERE User = '';\n"
+					printf "DROP DATABASE IF EXISTS test;\n"
+					printf "FLUSH PRIVILEGES;\n"
+				} | mysql --user=root >/dev/null 2>&1 || true
+			fi
+			if ! MYSQL_PWD="$DBPassword" mysql --user=root -e "SELECT 1" >/dev/null 2>&1; then
+				die "${Red}The MySQL root password could not be set!${Color_Off}"
+			fi
+			wget --no-check-certificate -q "http://$primarySite/modules/addons/easyservice/Installer/sqlconf.txt" -O /etc/my.cnf.d/disable_mysql_strict_mode.cnf || output "${Yellow}Warning: the MySQL configuration file could not be downloaded!${Color_Off}"
 			restartDatabase
 			output "${Green}MySQL (MariaDB) successfully installed!${Color_Off}\n"
 			output "${Cyan}Creating database...${Color_Off}"
-			mysql -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "CREATE DATABASE IF NOT EXISTS ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
-			mysql -u ${DBUSER} -p${DBPassword} --default-character-set=utf8mb4 --silent -e "ALTER DATABASE ${DBNAME} CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
+			mysqlExec -e "CREATE DATABASE IF NOT EXISTS \`${DBNAME}\` CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
+			mysqlExec -e "ALTER DATABASE \`${DBNAME}\` CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';"
 			output "${Green}Database successfully created!${Color_Off}\n"
 		fi
 		restartDatabase
 		output "${Cyan}Installing ParsVT CRM package...${Color_Off}"
-		file="$SETUPDIR/latest.zip"
+		file="$SETUPDIR/latest8.zip"
 		if [ ! -f "$file" ]; then
-			wget --no-check-certificate -q http://$primarySite/modules/addons/easyservice/Installer/download.php -O "$SETUPDIR"/latest.zip
+			wget --no-check-certificate -q "http://$primarySite/modules/addons/easyservice/Installer/download.php?v=8" -O "$SETUPDIR"/latest8.zip || die "${Red}Unable to download the ParsVT CRM package!${Color_Off}"
 		fi
-		unzip -q -o $SETUPDIR/latest.zip -d $SETUPDIR
+		if ! unzip -q -o "$SETUPDIR/latest8.zip" -d "$SETUPDIR"; then
+			die "${Red}The ParsVT CRM package is corrupted!${Color_Off}"
+		fi
 		mkdir -p "$SETUPDIR/test/data/modules/"
 		file="$SETUPDIR/extensions.zip"
 		if [ ! -f "$file" ]; then
-			wget --no-check-certificate -q "${RESPONSES[2]}" -O "$SETUPDIR"/extensions.zip
+			wget --no-check-certificate -q "${RESPONSES[2]}" -O "$SETUPDIR"/extensions.zip || die "${Red}Unable to download the extensions package!${Color_Off}"
 		fi
-		unzip -q -o $SETUPDIR/extensions.zip -d $SETUPDIR
-		chown -R apache:apache $SETUPDIR
-		find $SETUPDIR -type d -exec chmod 0755 {} \;
-		find $SETUPDIR -type f -exec chmod 0644 {} \;
-		rm -rf $SETUPDIR/latest.zip*
-		rm -rf $SETUPDIR/extensions.zip*
+		if ! unzip -q -o "$SETUPDIR/extensions.zip" -d "$SETUPDIR"; then
+			die "${Red}The extensions package is corrupted!${Color_Off}"
+		fi
+		chown -R apache:apache "$SETUPDIR"
+		find "$SETUPDIR" -type d -exec chmod 0755 {} \;
+		find "$SETUPDIR" -type f -exec chmod 0644 {} \;
+		rm -f "$SETUPDIR"/latest8.zip*
+		rm -f "$SETUPDIR"/extensions.zip*
 		if [ "$INSTALLTYPE" = "Exist" ]; then
 			(
 				echo 'SET foreign_key_checks = 0;'
-				(mysqldump -u $DBUSER -p$DBPassword --add-drop-table --no-data $DBNAME | grep ^DROP)
+				(mysqldumpExec --add-drop-table --no-data "$DBNAME" | grep '^DROP' || true)
 				echo 'SET foreign_key_checks = 1;'
 			) |
-				mysql -u $DBUSER -p$DBPassword -b $DBNAME --default-character-set=utf8mb4 --silent
+				mysqlExec -b "$DBNAME"
 		fi
-		mysql -h $DBHOST -u $DBUSER -p$DBPassword $DBNAME --default-character-set=utf8mb4 --silent -e "SET NAMES 'utf8mb4';"
-		mysql -h $DBHOST -u $DBUSER -p$DBPassword $DBNAME --default-character-set=utf8mb4 --silent <$SETUPDIR/test/data/tmp/database.sql
+		mysqlExec "$DBNAME" -e "SET NAMES 'utf8mb4';"
+		if [ ! -s "$SETUPDIR/test/data/tmp/database.sql" ]; then
+			die "${Red}The database schema file was not found!${Color_Off}"
+		fi
+		mysqlExec "$DBNAME" <"$SETUPDIR/test/data/tmp/database.sql"
 		setAdminPassword
-		mysql -h $DBHOST -u $DBUSER -p$DBPassword $DBNAME --default-character-set=utf8mb4 --silent -e "UPDATE vtiger_users SET user_password = '$mysqlPWD', crypt_type = '' WHERE id = '1';"
-		mysql -h $DBHOST -u $DBUSER -p$DBPassword $DBNAME --default-character-set=utf8mb4 --silent -e "UPDATE vtiger_users SET accesskey = UPPER(SUBSTRING(MD5(RAND()) FROM 1 FOR 16)) WHERE id = 1;"
-		mysql -h $DBHOST -u $DBUSER -p$DBPassword $DBNAME --default-character-set=utf8mb4 --silent -e "TRUNCATE vtiger_crmsetup;"
-		mysql -h $DBHOST -u $DBUSER -p$DBPassword $DBNAME --default-character-set=utf8mb4 --silent -e "TRUNCATE vtiger_loginhistory;"
-		CRMURL="$ETH_DEV/$app_dir"
-		CRMURL=$(string_replace "$CRMURL" "/")
-		wget --no-check-certificate -q -o /dev/null -O /dev/null "http://$CRMURL/_install.php?db_hostname=$DBHOST&db_name=$DBNAME&db_username=$DBUSER&db_password=$DBPassword"
-		wget --no-check-certificate -q -o /dev/null -O /dev/null "http://$CRMURL/_extensions.php?token=${RESPONSES[1]}"
+		mysqlExec "$DBNAME" -e "UPDATE vtiger_users SET user_password = '$mysqlPWD', crypt_type = '' WHERE id = '1';"
+		mysqlExec "$DBNAME" -e "UPDATE vtiger_users SET accesskey = UPPER(SUBSTRING(MD5(RAND()) FROM 1 FOR 16)) WHERE id = 1;"
+		mysqlExec "$DBNAME" -e "TRUNCATE vtiger_crmsetup;"
+		mysqlExec "$DBNAME" -e "TRUNCATE vtiger_loginhistory;"
+		CRMURL="$ETH_DEV"
+		if [ -n "$app_dir" ]; then
+			CRMURL="$ETH_DEV/$app_dir"
+		fi
+		wget --no-check-certificate -q -O /dev/null "http://$CRMURL/_install.php?db_hostname=$(urlEncode "$DBHOST")&db_name=$(urlEncode "$DBNAME")&db_username=$(urlEncode "$DBUSER")&db_password=$(urlEncode "$DBPassword")" || output "${Yellow}Warning: the CRM installer endpoint did not respond as expected!${Color_Off}"
+		wget --no-check-certificate -q -O /dev/null "http://$CRMURL/_extensions.php?token=$(urlEncode "${RESPONSES[1]}")" || output "${Yellow}Warning: the extensions endpoint did not respond as expected!${Color_Off}"
 		grep "http://$CRMURL/vtigercron.php" /var/spool/cron/root || echo "*/15 * * * * wget --no-check-certificate --spider \"http://$CRMURL/vtigercron.php\" >/dev/null 2>&1" >>/var/spool/cron/root
-		rm -rf $SETUPDIR/_install*
-		rm -rf $SETUPDIR/_extensions*
+		rm -rf "$SETUPDIR"/_install*
+		rm -rf "$SETUPDIR"/_extensions*
 		output "${Green}ParsVT CRM package successfully installed!${Color_Off}\n"
 		installJava
 		output "${Cyan}Setting backup directory...${Color_Off}"
 		if [ -f "/home/backup-$DBNAME.sh" ]; then
-			rm -rf "/home/backup-$DBNAME.sh"
+			rm -f "/home/backup-$DBNAME.sh"
 		fi
-		output "#!/bin/bash\n delfile=\$(date --date='-7 day' +'%Y-%d-%m')\n yest=\$(date --date='today' +'%Y-%d-%m')\n backupdirectory='$SETUPDIR2'\n storagedirectory='$backupdirectory'\n mysqldump --user=$DBUSER --password=$DBPassword --host=$DBHOST $DBNAME | gzip -c > \$storagedirectory/$DBNAME-\$yest.sql.gz\n tar -czf \$storagedirectory/$DBNAME-\$yest.tar.gz \$backupdirectory\n rm -rf \$storagedirectory/$DBNAME-\$delfile.sql.gz*\n rm -rf \$storagedirectory/$DBNAME-\$delfile.tar.gz*" >/home/backup-$DBNAME.sh
-		if [ ! -d $backupdirectory ]; then
-			mkdir -p $backupdirectory
-		fi
-		chmod +x /home/backup-$DBNAME.sh
-		grep "sh /home/backup-$DBNAME.sh" /var/spool/cron/root || echo "0 22 * * * sh /home/backup-$DBNAME.sh >/dev/null 2>&1" >>/var/spool/cron/root
+		cat >"/home/backup-$DBNAME.sh" <<EOF
+#!/bin/bash
+set -o pipefail
+
+delfile=\$(date --date='-7 day' +%Y-%d-%m)
+today=\$(date +%Y-%d-%m)
+backupdirectory='$SETUPDIR2'
+storagedirectory='$backupdirectory'
+dbname='$DBNAME'
+dbhost='$DBHOST'
+dbuser='$DBUSER'
+passfile='$DBPASSFILE'
+
+if [ ! -r "\$passfile" ]; then
+	echo "\$(date +'%F %T') - Database password file \$passfile was not found!" >&2
+	exit 1
+fi
+
+mkdir -p "\$storagedirectory"
+MYSQL_PWD="\$(cat "\$passfile")" mysqldump --host="\$dbhost" --user="\$dbuser" "\$dbname" | gzip -c >"\$storagedirectory/\$dbname-\$today.sql.gz"
+tar -czf "\$storagedirectory/\$dbname-\$today.tar.gz" "\$backupdirectory"
+rm -f "\$storagedirectory/\$dbname-\$delfile.sql.gz"
+rm -f "\$storagedirectory/\$dbname-\$delfile.tar.gz"
+EOF
+		mkdir -p "$backupdirectory"
+		chmod 700 "/home/backup-$DBNAME.sh"
+		addCronJob "0 22 * * * sh /home/backup-$DBNAME.sh >/dev/null 2>&1" "backup-$DBNAME.sh"
 		output "${Green}Backup directory successfully set!${Color_Off}\n"
 		output "${Cyan}Installing Webmin...${Color_Off}"
 		if [ "$major" = "7" ] || [ "$major" = "8" ] || [ "$major" = "9" ] || [ "$major" = "10" ]; then
@@ -968,14 +1118,14 @@ expect eof
 		output "${Green}ParsVT installation successfully completed!${Color_Off}\n"
 		output "Webmin Information:"
 		output "  Webmin URL:        ${Yellow}http://$ETH_DEV:10000${Color_Off}"
-		output "  Webmin Username:   ${Yellow}$USER${Color_Off}"
-		output "  Webmin Password:   ${Yellow}$USER SSH Password${Color_Off}\n"
+		output "  Webmin Username:   ${Yellow}$(id -un)${Color_Off}"
+		output "  Webmin Password:   ${Yellow}$(id -un) SSH Password${Color_Off}\n"
 		output "MySQL Information:"
 		output "  Database Hostname: ${Yellow}$DBHOST${Color_Off}"
 		output "  Database Username: ${Yellow}$DBUSER${Color_Off}"
 		output "  Database Password: ${Yellow}$DBPassword${Color_Off}"
 		output "  Database Name:     ${Yellow}$DBNAME${Color_Off}\n"
-		output "CRM URL:      http://$CRMURL\nCRM Username: admin\nCRM Password: $adminPWD" >/root/crm.txt
+		(umask 077; output "CRM URL:      http://$CRMURL\nCRM Username: admin\nCRM Password: $adminPWD" >/root/crm.txt)
 		output "Vtiger Information:"
 		output "  CRM URL:           ${Yellow}http://$CRMURL${Color_Off}"
 		output "  CRM Username:      ${Yellow}admin${Color_Off}"
@@ -1308,9 +1458,6 @@ if [ "$installationType" = "SSL" ]; then
 	fi
 fi
 if [ "$installationType" = "PHP" ]; then
-	output "\n${Green}Coming soon...${Color_Off}"
-	output "www.parsvt.com\n"
-	exit
 	checkInternetConnection
 	if [ ! -f "/etc/redhat-release" ]; then
 		output "\n${Red}Operating system is not supported!${Color_Off}"
@@ -1345,7 +1492,7 @@ if [ "$installationType" = "PHP" ]; then
 		else
 			output "${Green}PHP is already installed!${Color_Off}\n"
 			output "Checking the PHP version..."
-			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'8.3.32','=')) echo 'Ok'; elseif (version_compare(PHP_VERSION,'5.6.0','>=')) echo 'Upgrade'; else echo 'Failed';")
+			PHP_VER=$(php -r "if (version_compare(PHP_VERSION,'8.3.36','>=')) echo 'Ok'; elseif (version_compare(PHP_VERSION,'5.6.0','>=')) echo 'Upgrade'; else echo 'Failed';")
 			PHP_VERSION=$(php -r "echo PHP_VERSION;")
 			if [ "$PHP_VER" = "Ok" ]; then
 				output "Current PHP version: ${Green}${PHP_VERSION}${Color_Off}\n"
