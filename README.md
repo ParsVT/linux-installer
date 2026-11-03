@@ -9,5 +9,5 @@ Shell script to install ParsVT CRM on Linux (CentOS and all RHEL-based).
 
 ## Usage
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/ParsVT/linux-installer/main/parsvt.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/ParsVT/linux-installer/main/parsvt.sh)
 ```
